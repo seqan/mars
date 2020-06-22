@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.8)
 ## CUSTOMISE
 
 # Define the application name and version.
-project (fastq_to_fasta VERSION 1.0.0)
+project (mars VERSION 1.0.0)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -40,3 +40,4 @@ add_subdirectory (doc EXCLUDE_FROM_ALL)
 
 enable_testing ()
 add_subdirectory (test EXCLUDE_FROM_ALL)
+message(STATUS "The current build type is ${CMAKE_BUILD_TYPE}.")
