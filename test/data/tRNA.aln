@@ -1,0 +1,18 @@
+CLUSTAL FORMAT for T-COFFEE Version_13.41.0.28bdc39 [http://www.tcoffee.org] [MODE:  ], CPU=0.00 sec, SCORE=90, Nseq=5, Len=78
+
+M83762.1-1031_1093      gcuuuaaaagc-uuu---gcugaagcaacggcc----uuguaagucguag
+AC008670.6-83725_83795  acuuuuaaagg-aua-acagccauccguugguc----uuaggccccaaaa
+Z82044.1-16031_16103    gcgguuguggcgaag-ugguuaacgcaccagauuguggcucuggcacuc-
+AE004843.1-4972_4900    gcucauguagc-ucaguugguagagcacacccu----ugguaagggugag
+AB042432.1-14140_14072  guuucuguagu-ugaau---uacaacgaugauu----uuucaugucauug
+                                 *               *
+
+M83762.1-1031_1093      aa-aacu--a-ua---cguuuuaaagcu
+AC008670.6-83725_83795  au-uuuggugcaacuccaaauaaaagua
+Z82044.1-16031_16103    ---guggguucgauucccaucaaucgcc
+AE004843.1-4972_4900    gucagcgguucaaauccgcucaugagcu
+AB042432.1-14140_14072  gu-cgcaguugaaugcuguguagaaaua
+                                    *
+
+
+
