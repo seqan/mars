@@ -1,10 +1,17 @@
+#include <seqan3/std/algorithm>
 #include <seqan3/std/filesystem>
+#include <seqan3/std/iterator>
+#include <list>
 
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/range/views/to_char.hpp>
+#include <seqan3/range/views/zip.hpp>
+
 
 #include "input.hpp"
+#include "ipknot.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -46,6 +53,20 @@ int main(int argc, char ** argv)
 
     for (auto const & seq : msa.sequences)
         seqan3::debug_stream << seq << "\n";
+
+    std::list<std::string> names{msa.names.size()};
+    std::ranges::copy(msa.names, names.begin());
+
+    std::list<std::string> seqs{msa.sequences.size()};
+    for (auto && [src, trg] : seqan3::views::zip(msa.sequences | seqan3::views::to_char, seqs))
+        std::ranges::copy(src, std::cpp20::back_inserter(trg));
+    seqan3::debug_stream << names << "\n";
+    seqan3::debug_stream << seqs << "\n";
+
+    auto structure = run_ipknot(names, seqs);
+
+    seqan3::debug_stream << std::get<0>(structure) << "\n";
+    seqan3::debug_stream << std::get<1>(structure) << "\n";
 
     return 0;
 }
