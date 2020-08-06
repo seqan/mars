@@ -18,7 +18,7 @@ std::filesystem::path data(std::string const & filename)
     return std::filesystem::path{std::string{DATADIR}}.concat(filename);
 }
 
-TEST(input, read_clustal_file)
+TEST(Input, ReadClustalFile)
 {
     std::vector<std::string> names
     {

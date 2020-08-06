@@ -7,7 +7,7 @@ TEST_F(cli_test, no_options)
     cli_test_result result = execute_app("mars");
     std::string expected
     {
-        "MaRs - Motif-based aligned RNA searcher\n"
+        "mars - Motif-based aligned RNA searcher\n"
         "=======================================\n"
         "    Try -h or --help for more information.\n"
     };
