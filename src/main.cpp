@@ -12,6 +12,7 @@
 
 #include "input.hpp"
 #include "ipknot.hpp"
+#include "motif_store.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -63,10 +64,10 @@ int main(int argc, char ** argv)
     seqan3::debug_stream << names << "\n";
     seqan3::debug_stream << seqs << "\n";
 
-    auto structure = run_ipknot(names, seqs);
+    auto && [bpseq, plevel] = run_ipknot(names, seqs);
 
-    seqan3::debug_stream << std::get<0>(structure) << "\n";
-    seqan3::debug_stream << std::get<1>(structure) << "\n";
+    mars::motif_store motifs(std::move(bpseq));
+    motifs.stem_loop_partition(std::move(plevel));
 
     return 0;
 }
