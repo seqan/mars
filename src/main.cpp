@@ -20,7 +20,7 @@ int main(int argc, char ** argv)
     parser.info.short_description = "Motif-based aligned RNA searcher";
     parser.info.author = "Jörg Winkler";
     parser.info.version = "1.0.0";
-    parser.info.date = "July 2020";
+    parser.info.date = "September 2020";
     parser.info.examples.emplace_back("./mars structural_rna.aln -g genome.fasta -o out.txt");
     parser.info.description.emplace_back("MaRs is a tool that reads a structural multiple RNA alignment "
                                          "(e.g. from LaRA) and derives fuzzy stem loop descriptors from it. "
@@ -52,17 +52,14 @@ int main(int argc, char ** argv)
 
     auto msa = mars::read_clustal_file<seqan3::rna4>(alignment_file);
 
-    for (auto const & seq : msa.sequences)
-        seqan3::debug_stream << seq << "\n";
-
     std::list<std::string> names{msa.names.size()};
     std::ranges::copy(msa.names, names.begin());
 
     std::list<std::string> seqs{msa.sequences.size()};
     for (auto && [src, trg] : seqan3::views::zip(msa.sequences | seqan3::views::to_char, seqs))
         std::ranges::copy(src, std::cpp20::back_inserter(trg));
-    seqan3::debug_stream << names << "\n";
-    seqan3::debug_stream << seqs << "\n";
+    seqan3::debug_stream << "Names: " << names << "\n";
+    seqan3::debug_stream << "Seqs:  " << seqs << "\n";
 
     auto && [bpseq, plevel] = run_ipknot(names, seqs);
 

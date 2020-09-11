@@ -7,17 +7,14 @@
 
 void mars::motif_store::stem_loop_partition(std::vector<int> plevel)
 {
-    seqan3::debug_stream << bpseq << "\n";
-    seqan3::debug_stream << plevel << "\n";
-
     struct pk_info
     {
         int level;
         bool closing;
         std::pair<int, int> previous;
     };
-
     std::vector<pk_info> pk_infos{};
+
     for (auto && [idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
     {
         if (pk == -1) // skip unpaired
@@ -34,12 +31,12 @@ void mars::motif_store::stem_loop_partition(std::vector<int> plevel)
             if (--status.level == 0)
                 stemloops.push_back(status.previous);
         }
-        else if (status.closing) // open an interaction after closing the previous
+        else if (status.closing) // open an interaction (after closing the previous)
         {
-            status.level = 1;
-            status.closing = false;
             if (status.level > 0)
                 stemloops.push_back(status.previous);
+            status.level = 1;
+            status.closing = false;
         }
         else // open another interaction
         {

@@ -264,7 +264,7 @@ public:
     vub_.push_back(hi);
     return col;
   }
- 
+
   int make_constraint(IP::BoundType bnd, double l, double u)
   {
     int row = bnd_.size();
@@ -299,17 +299,17 @@ public:
 
     int status;
     lp_ = CPXcreateprob(env_, &status, "");
-    if (lp_==NULL) 
+    if (lp_==NULL)
       throw std::runtime_error("failed to create LP");
-    
+
     unsigned int n_nonzero=0;
-    for (unsigned int i=0; i!=m_.size(); ++i) 
+    for (unsigned int i=0; i!=m_.size(); ++i)
       n_nonzero += m_[i].size();
     std::vector<int> matbeg(numcols, 0);
     std::vector<int> matcnt(numcols, 0);
     std::vector<int> matind(n_nonzero);
     std::vector<double> matval(n_nonzero);
-    for (unsigned int i=0, k=0; i!=m_.size(); ++i) 
+    for (unsigned int i=0, k=0; i!=m_.size(); ++i)
     {
       matbeg[i] = i==0 ? 0 : matbeg[i-1]+matcnt[i-1];
       matcnt[i] = m_[i].size();
@@ -323,7 +323,7 @@ public:
 
     status = CPXcopylp(env_, lp_, numcols, numrows,
                         dir_==IP::MIN ? CPX_MIN : CPX_MAX,
-                        &coef_[0], &rhs_[0], &bnd_[0], 
+                        &coef_[0], &rhs_[0], &bnd_[0],
                         &matbeg[0], &matcnt[0], &matind[0], &matval[0],
                         &vlb_[0], &vub_[0], &rngval_[0] );
     vlb_.clear();

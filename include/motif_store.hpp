@@ -16,6 +16,11 @@ public:
     {}
 
     void stem_loop_partition(std::vector<int> plevel);
+
+    std::vector<std::pair<int, int>> get_stemloops()
+    {
+        return stemloops;
+    }
 };
 
 } // namespace mars
