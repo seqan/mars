@@ -16,7 +16,7 @@
 
 int main(int argc, char ** argv)
 {
-    seqan3::argument_parser parser{"MaRs", argc, argv};
+    seqan3::argument_parser parser{"mars", argc, argv};
     parser.info.short_description = "Motif-based aligned RNA searcher";
     parser.info.author = "Jörg Winkler";
     parser.info.version = "1.0.0";
@@ -44,7 +44,7 @@ int main(int argc, char ** argv)
     {
         parser.parse();                                                  // trigger command line parsing
     }
-    catch (seqan3::argument_parser_error const & ext)                     // catch user errors
+    catch (seqan3::argument_parser_error const & ext)                    // catch user errors
     {
         seqan3::debug_stream << "Parsing error. " << ext.what() << "\n"; // give error message
         return -1;
