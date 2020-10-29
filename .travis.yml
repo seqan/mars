@@ -17,6 +17,10 @@ addons:
       - g++-8
       - g++-9
       - g++-10
+      - libboost-all-dev
+  homebrew:
+    packages:
+      - boost
 
 # https://docs.travis-ci.com/user/languages/c
 jobs:
@@ -59,18 +63,18 @@ jobs:
         - BUILD_TYPE=Release
         - CXXFLAGS="-std=c++17 -fconcepts"
     - os: osx
-      name: "Debug gcc9 Xcode11"
-      osx_image: xcode11
+      name: "Debug gcc10 Xcode12.2"
+      osx_image: xcode12.2
       env:
-        - CXX=g++-9
-        - CC=gcc-9
+        - CXX=g++-10
+        - CC=gcc-10
         - BUILD_TYPE=Debug
     - os: osx
-      name: "Release gcc9 Xcode11"
-      osx_image: xcode11
+      name: "Release gcc10 Xcode12.2"
+      osx_image: xcode12.2
       env:
-        - CXX=g++-9
-        - CC=gcc-9
+        - CXX=g++-10
+        - CC=gcc-10
         - BUILD_TYPE=Release
     - os: linux
       name: "Documentation"

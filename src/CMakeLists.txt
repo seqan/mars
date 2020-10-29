@@ -28,7 +28,7 @@ if (GLPK)
 endif ()
 
 # An object library (without main) to be used in multiple targets.
-add_library ("${PROJECT_NAME}_lib" OBJECT motif_store.cpp)
+add_library ("${PROJECT_NAME}_lib" STATIC motif_store.cpp)
 target_link_libraries ("${PROJECT_NAME}_lib" PUBLIC seqan3::seqan3 IPknot)
 target_include_directories ("${PROJECT_NAME}_lib" PUBLIC ../include)
 
