@@ -483,42 +483,36 @@ update_bpm(uint pk_level, const SEQ& seq, EN& en,
 std::pair<std::vector<int>, std::vector<int>> run_ipknot(std::list<std::string> const & names,
                                                          std::list<std::string> const & seqs)
 {
-	//for (size_t i = 0; i < record.seqences.size(); ++i){
-		//names.push_back(record.seqNames[i]);
-		//seqs.push_back(record.seqs[i]);
-	//}
-
-	uint pk_level=0;
 	bool isolated_bp=false;
 	int n_th=1;
-	int n_refinement=0;
-	std::vector< std::vector<float> > th;
+//	int n_refinement=0;
+	std::vector<std::vector<float>> th{{1/(2.0+1)}, {1/(4.0+1)}};
 	std::vector<float> alpha;
 	bool levelwise=true;
 	//bool max_pmcc=false; 	// TODO: Deleted the pseudo expected MMC solver? Don't use max_pmcc from ipknot.cpp
 
-	if (th.empty())
-	{
-		th.resize(2);
-		if (n_refinement==0)
-		{
-			th[0].resize(1, 1/(2.0+1)); // -g 2
-			th[1].resize(1, 1/(4.0+1)); // -g 4
-		}
-		else
-		{
-			th[0].resize(1, 1/(1.0+1)); // -g 1
-			th[1].resize(1, 1/(1.0+1)); // -g 1
-		}
-	}
+//	if (th.empty())
+//	{
+//		th.resize(2);
+//		if (n_refinement==0)
+//		{
+//			th[0].resize(1, 1/(2.0+1)); // -g 2
+//			th[1].resize(1, 1/(4.0+1)); // -g 4
+//		}
+//		else
+//		{
+//			th[0].resize(1, 1/(1.0+1)); // -g 1
+//			th[1].resize(1, 1/(1.0+1)); // -g 1
+//		}
+//	}
 
-	if (alpha.empty())
-	{
-		alpha.resize(th.size());
-		for (uint i=0; i!=alpha.size(); ++i)
-			alpha[i]=1.0/alpha.size();
-	}
-	pk_level=alpha.size();
+//	if (alpha.empty())
+//	{
+		alpha.resize(th.size(), 1.0/th.size());
+//		for (uint i=0; i!=alpha.size(); ++i)
+//			alpha[i]=1.0/alpha.size();
+//	}
+	unsigned pk_level=alpha.size();
 
     IPknot ipknot(pk_level, &alpha[0], levelwise, !isolated_bp, n_th);
     std::vector<float> bp;
@@ -531,15 +525,15 @@ std::pair<std::vector<int>, std::vector<int>> run_ipknot(std::list<std::string> 
 
 	Aln aln(names, seqs);
 
-	BPEngineAln* mix_en=NULL;
-	std::vector<BPEngineSeq*> en_s;
-	std::vector<BPEngineAln*> en_a;
-	const char* param=NULL;
+//	BPEngineAln* mix_en = nullptr;
+//	std::vector<BPEngineSeq*> en_s;
+//	std::vector<BPEngineAln*> en_a;
+//	const char* param = nullptr;
 //
 
     BPEngineSeq* e2 = new CONTRAfoldModel();
-    en_s.push_back(e2);
-    en_a.push_back(new AveragedModel(e2));
+//    en_s.push_back(e2);
+//    en_a.push_back(new AveragedModel(e2));
 
     //BPEngineSeq* e = new RNAfoldModel(param);
     //en_s.push_back(e);
@@ -547,18 +541,20 @@ std::pair<std::vector<int>, std::vector<int>> run_ipknot(std::list<std::string> 
     //en_a.push_back(new AlifoldModel(param));
     //mix_en = new MixtureModel(en_a);
 
-	BPEngineAln* en= mix_en ? mix_en : en_a[0];
+	BPEngineAln* en = new AveragedModel(e2);
+//	BPEngineAln* en = en_a[0];
+//	BPEngineAln* en= mix_en ? mix_en : en_a[0];
 	en->calculate_posterior(aln.seq(), bp, offset);
 
 	std::vector<int> bpseq;
 
 	ipknot.solve(aln.size(), bp, offset, t, bpseq, plevel);
 
-	for (int i=0; i!=n_refinement; ++i)
-	{
-		update_bpm(pk_level, aln.seq(), *en, bpseq, plevel, bp, offset);
-		ipknot.solve(aln.size(), bp, offset, t, bpseq, plevel);
-	}
+//	for (int i=0; i!=n_refinement; ++i)
+//	{
+//		update_bpm(pk_level, aln.seq(), *en, bpseq, plevel, bp, offset);
+//		ipknot.solve(aln.size(), bp, offset, t, bpseq, plevel);
+//	}
 
 //	make_interaction_pairs(bpseq, plevel, consensusStructure);
 //
@@ -577,9 +573,11 @@ std::pair<std::vector<int>, std::vector<int>> run_ipknot(std::list<std::string> 
 
 	//output_fa(std::cout, aln.name().front(), aln.consensus(), consensusStructure, plevel);
 
-    if (mix_en) delete mix_en;
-    for (uint i=0; i!=en_s.size(); ++i) delete en_s[i];
-    for (uint i=0; i!=en_a.size(); ++i) delete en_a[i];
+//    if (mix_en) delete mix_en;
+//    for (uint i=0; i!=en_s.size(); ++i) delete en_s[i];
+//    for (uint i=0; i!=en_a.size(); ++i) delete en_a[i];
+    delete e2;
+    delete en;
 
     return std::make_pair(bpseq, plevel);
 }

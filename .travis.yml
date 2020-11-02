@@ -4,8 +4,8 @@ dist: bionic
 language: cpp
 cache:
   ccache: true
-#  directories:
-#    - vienna-build/
+  directories:
+    - vienna-build/
 
 git:
   submodules: true
