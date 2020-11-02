@@ -6,6 +6,7 @@ cache:
   ccache: true
   directories:
     - vienna-build/
+    - mycache/
 
 git:
   submodules: true
@@ -114,16 +115,22 @@ install:
   - cmake --version
   - |
     # install ViennaRNA, unless we are building documentation
+    mkdir -p mycache
     if [ "$TRAVIS_JOB_NAME" != "Documentation" ]
     then
-      mkdir -p /tmp/vienna-download
-      mkdir -p vienna-build
-      wget --no-clobber --directory-prefix=/tmp/vienna-download/ \
-        https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_4_x/ViennaRNA-2.4.16.tar.gz
-      tar -C vienna-build/ -zxf /tmp/vienna-download/ViennaRNA-2.4.16.tar.gz
+      # check if a cached build exists
+      if [ ! -f "vienna-build/ViennaRNA-2.4.16/src/ViennaRNA/libRNA.la" ]
+      then
+        mkdir -p /tmp/vienna-download
+        mkdir -p vienna-build
+        wget --no-clobber --directory-prefix=/tmp/vienna-download/ \
+          https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_4_x/ViennaRNA-2.4.16.tar.gz
+        tar -C vienna-build/ -zxf /tmp/vienna-download/ViennaRNA-2.4.16.tar.gz
+      fi
       cd vienna-build/ViennaRNA-2.4.16
-      ./configure -C --disable-mpfr --without-gsl --without-perl --without-python --without-python3 --without-doc \
-        --without-tutorial --without-kinfold --without-forester --without-check --without-rnalocmin --disable-openmp
+      ./configure --cache-file=../../mycache/config.cache --disable-mpfr --without-gsl --without-perl \
+        --without-python --without-python3 --without-doc --without-tutorial --without-kinfold \
+        --without-forester --without-check --without-rnalocmin --disable-openmp
       make -j
       sudo make install
       cd -
@@ -137,4 +144,3 @@ before_script:
 script:
   - make -k -j2 api_test cli_test
   - ctest . --output-on-failure
-
