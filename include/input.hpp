@@ -1,5 +1,6 @@
 #pragma once
 
+#include <seqan3/std/algorithm>
 #include <seqan3/std/filesystem>
 #include <fstream>
 #include <string>
@@ -9,8 +10,7 @@
 #include <seqan3/alphabet/gap/gapped.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
 #include <seqan3/alphabet/nucleotide/rna15.hpp>
-#include <seqan3/core/char_operations/predicate.hpp>
-#include <seqan3/core/detail/to_string.hpp>
+//#include <seqan3/core/debug_stream/detail/to_string.hpp>
 #include <seqan3/io/exception.hpp>
 #include <seqan3/range/detail/misc.hpp>
 #include <seqan3/range/views/char_to.hpp>
@@ -19,7 +19,8 @@
 #include <seqan3/range/views/take_line.hpp>
 #include <seqan3/range/views/type_reduce.hpp>
 #include <seqan3/range/views/zip.hpp>
-#include <seqan3/std/algorithm>
+//#include <seqan3/utility/char_operations/predicate.hpp>
+//#include <seqan3/utility/detail/type_name_as_string.hpp>
 
 namespace mars
 {
@@ -52,10 +53,11 @@ multiple_alignment<alphabet_type> read_clustal_file(std::filesystem::path const 
         using legal_alphabet_type = std::conditional_t<seqan3::nucleotide_alphabet<alphabet_type>,
                                                        seqan3::rna15,
                                                        seqan3::aa27>;
-        auto constexpr is_legal_alph = seqan3::is_in_alphabet<seqan3::gapped<legal_alphabet_type>>;
+        auto constexpr is_legal_alph = seqan3::char_is_valid_for<seqan3::gapped<legal_alphabet_type>>;
         if (!is_legal_alph(c))
-            throw seqan3::parse_error{"Encountered an unexpected letter: " + is_legal_alph.msg +
-                                      " evaluated to false on " + seqan3::detail::make_printable(c)};
+            throw seqan3::parse_error{"Encountered an unexpected letter: char_is_valid_for<" +
+                                      seqan3::detail::type_name_as_string<legal_alphabet_type> +
+                                      "> evaluated to false on " + seqan3::detail::make_printable(c)};
         return c;
     };
 
