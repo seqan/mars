@@ -16,18 +16,18 @@ TEST_F(cli_test, no_options)
     EXPECT_EQ(result.err, std::string{});
 }
 
-TEST_F(cli_test, fail_no_argument)
-{
-    cli_test_result result = execute_app("mars", "-o", data("out.aln"));
-    std::string expected
-    {
-        "Parsing error. Not enough positional arguments provided (Need at least 1). "
-        "See -h/--help for more information.\n"
-    };
-    EXPECT_NE(result.exit_code, 0);
-    EXPECT_EQ(result.out, std::string{});
-    EXPECT_EQ(result.err, expected);
-}
+//TEST_F(cli_test, fail_no_argument)
+//{
+//    cli_test_result result = execute_app("mars", "-o", data("out.aln"));
+//    std::string expected
+//    {
+//        "Parsing error. Not enough positional arguments provided (Need at least 1). "
+//        "See -h/--help for more information.\n"
+//    };
+//    EXPECT_NE(result.exit_code, 0);
+//    EXPECT_EQ(result.out, std::string{});
+//    EXPECT_EQ(result.err, expected);
+//}
 
 //TEST_F(cli_test, with_argument)
 //{

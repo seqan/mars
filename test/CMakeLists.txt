@@ -44,6 +44,7 @@ macro (add_app_test test_filename test_alternative)
         add_dependencies (api_test ${target})
     endif ()
     target_include_directories(${target} PUBLIC "${SEQAN3_CLONE_DIR}/test/include")
+    target_include_directories(${target} PUBLIC "${SEQAN3_CLONE_DIR}/test")
 
     # Generate and set the test name.
     get_filename_component (target_relative_path "${source_file}" DIRECTORY)

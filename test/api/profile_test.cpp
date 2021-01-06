@@ -74,5 +74,5 @@ TEST(ProfileChar, StreamOperator)
 
     std::ostringstream os{};
     os << prof;
-    EXPECT_STREQ(os.str().c_str(), "(A:2,C:0,G:0,U:1)");
+    EXPECT_STREQ(os.str().c_str(), "(2,0,0,1)");
 }

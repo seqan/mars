@@ -11,7 +11,7 @@ namespace mars
 /*!\brief Stores the frequency of characters at a specific position.
  * \tparam alph_type The legal alphabet for the profile entries.
  */
-template <seqan3::alphabet alph_type>
+template <seqan3::semialphabet alph_type>
 class profile_char
 {
 private:
@@ -23,16 +23,6 @@ private:
 
     //!\brief We store the count values here.
     std::array<uint32_t, size> tally;
-
-    /*!\brief Helper function to increase the respective character frequency by a fraction.
-     * \tparam div The fraction of a count, e.g. 3 increases the frequency by 1/3.
-     * \param x The character of which the count is increased.
-     */
-    template <uint32_t div>
-    void incr (char x)
-    {
-        tally[alph_type{}.assign_char(x).to_rank()] += one/div;
-    }
 
 public:
     /*!\name Constructors, destructor and assignment
@@ -73,22 +63,28 @@ public:
         }
         else
         {
+            /*!\brief Helper function to increase the respective character frequency by a fraction.
+             * \param div The fraction of a count, e.g. 3 increases the frequency by 1/3.
+             * \param x The character of which the count is increased.
+             */
+            auto const incr = [this] (short div, char x) { tally[alph_type{}.assign_char(x).to_rank()] += one/div; };
+
             switch (chr.to_char())
             {
-                case 'M': incr<2>('A'); incr<2>('C'); break;
-                case 'R': incr<2>('A'); incr<2>('G'); break;
-                case 'W': incr<2>('A'); incr<2>('T'); break;
-                case 'Y': incr<2>('C'); incr<2>('T'); break;
-                case 'S': incr<2>('C'); incr<2>('G'); break;
-                case 'K': incr<2>('G'); incr<2>('T'); break;
-                case 'V': incr<3>('A'); incr<3>('C'); incr<3>('G'); break;
-                case 'H': incr<3>('A'); incr<3>('C'); incr<3>('T'); break;
-                case 'D': incr<3>('A'); incr<3>('G'); incr<3>('T'); break;
-                case 'B': incr<3>('C'); incr<3>('G'); incr<3>('T'); break;
+                case 'M': incr(2, 'A'); incr(2, 'C'); break;
+                case 'R': incr(2, 'A'); incr(2, 'G'); break;
+                case 'W': incr(2, 'A'); incr(2, 'T'); break;
+                case 'Y': incr(2, 'C'); incr(2, 'T'); break;
+                case 'S': incr(2, 'C'); incr(2, 'G'); break;
+                case 'K': incr(2, 'G'); incr(2, 'T'); break;
+                case 'V': incr(3, 'A'); incr(3, 'C'); incr(3, 'G'); break;
+                case 'H': incr(3, 'A'); incr(3, 'C'); incr(3, 'T'); break;
+                case 'D': incr(3, 'A'); incr(3, 'G'); incr(3, 'T'); break;
+                case 'B': incr(3, 'C'); incr(3, 'G'); incr(3, 'T'); break;
                 case 'N':
                     if constexpr (!seqan3::char_is_valid_for<alph_type>('N')) // split 'N' if not supported
                     {
-                        incr<4>('A'); incr<4>('C'); incr<4>('G'); incr<4>('T');
+                        incr(4, 'A'); incr(4, 'C'); incr(4, 'G'); incr(4, 'T');
                         break;
                     }
                 default: increment(alph_type{chr});
@@ -142,13 +138,13 @@ public:
  * \param chr The character profile that should be printed.
  * \return The output stream.
  */
-template <seqan3::alphabet alph_type, typename ostream_type>
+template <seqan3::semialphabet alph_type, typename ostream_type>
 inline ostream_type & operator<<(ostream_type & os, profile_char<alph_type> const & chr)
 {
-    os << "(" << alph_type{}.assign_rank(0).to_char() << ":" << chr.quantity(0);
+    os << "(" << chr.quantity(0);
     for (size_t idx = 1; idx < seqan3::alphabet_size<alph_type>; ++idx)
     {
-        os << "," << alph_type{}.assign_rank(idx).to_char() << ":" << chr.quantity(idx);
+        os << "," << chr.quantity(idx);
     }
     os << ")";
     return os;
