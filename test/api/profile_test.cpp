@@ -36,6 +36,12 @@ TEST(ProfileChar, ConvertIncrementRna15Rna4)
     prof.increment('M'_rna15); // AC
     prof.increment('S'_rna15); // CG                         A  C    G  U
     EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{2, 1.5, 1, 1.5}));
+
+    prof.increment('V'_rna15); // ACG
+    prof.increment('H'_rna15); // ACU
+    prof.increment('D'_rna15); // AGU
+    prof.increment('B'_rna15); // CGU                        A  C    G  U
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{3, 2.5, 2, 2.5}));
 }
 
 TEST(ProfileChar, ConvertIncrementDna15Dna5)
@@ -49,6 +55,12 @@ TEST(ProfileChar, ConvertIncrementDna15Dna5)
     prof.increment('M'_dna15); // AC
     prof.increment('S'_dna15); // CG                         A    C  G    N  U
     EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 5>{1.5, 1, 0.5, 2, 1}));
+
+    prof.increment('R'_dna15); // AG
+    prof.increment('W'_dna15); // AU
+    prof.increment('Y'_dna15); // CU
+    prof.increment('K'_dna15); // GU                         A    C    G    N  U
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 5>{2.5, 1.5, 1.5, 2, 2.5}));
 }
 
 TEST(ProfileChar, ConvertIncrementRna4Rna15)

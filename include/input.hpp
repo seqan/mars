@@ -39,11 +39,11 @@ struct multiple_alignment
 /*!
  * \brief Read a CLUSTAL file (*.aln) into a multiple alignment representation.
  * \tparam alphabet_type The alphabet type of the sequences.
- * \param filepath The file where the alignment is stored.
+ * \param stream The input stream where the alignment is parsed from.
  * \return The alignment.
  */
 template<seqan3::alphabet alphabet_type>
-multiple_alignment<alphabet_type> read_clustal_file(std::filesystem::path const & filepath)
+multiple_alignment<alphabet_type> read_clustal_file(std::istream & stream)
 {
     multiple_alignment<alphabet_type> msa;
 
@@ -61,17 +61,12 @@ multiple_alignment<alphabet_type> read_clustal_file(std::filesystem::path const 
         return c;
     };
 
-    // Open filepath as stream.
-    std::ifstream stream(filepath, std::ios_base::in | std::ios::binary);
-    if (!stream.good())
-        throw seqan3::file_open_error{"Could not open file " + filepath.string() + " for reading."};
-
     auto stream_view = seqan3::views::istreambuf(stream);
 
     // skip initial whitespace and check if file starts with "CLUSTAL"
     seqan3::detail::consume(stream_view | seqan3::views::take_until(!seqan3::is_space));
     if (!std::ranges::equal(stream_view | seqan3::views::take_exactly_or_throw(7), std::string{"CLUSTAL"}))
-        throw seqan3::parse_error{"Expected to read 'CLUSTAL' in the beginning of file " + filepath.generic_string()};
+        throw seqan3::parse_error{"Expected to read 'CLUSTAL' in the beginning of the file."};
 
     // skip rest of the line and go to the first block
     seqan3::detail::consume(stream_view | seqan3::views::take_line);
@@ -106,7 +101,7 @@ multiple_alignment<alphabet_type> read_clustal_file(std::filesystem::path const 
         {
             // validate the sequence name
             if (!std::ranges::equal(stream_view | seqan3::views::take_exactly_or_throw(name.size()), name))
-                throw seqan3::parse_error{"Expected to read '" + name + "' in file " + filepath.generic_string()};
+                throw seqan3::parse_error{"Expected to read '" + name + "' in the input file."};
 
             // skip to sequence and append to alignment
             seqan3::detail::consume(stream_view | seqan3::views::take_until_or_throw(!seqan3::is_blank));
@@ -123,9 +118,26 @@ multiple_alignment<alphabet_type> read_clustal_file(std::filesystem::path const 
         seqan3::detail::consume(stream_view | seqan3::views::take_until(!seqan3::is_space));
     }
 
-    stream.close();
-
     return std::move(msa);
+}
+
+/*!
+ * \brief Read a CLUSTAL file (*.aln) into a multiple alignment representation.
+ * \tparam alphabet_type The alphabet type of the sequences.
+ * \param filepath The file where the alignment is stored.
+ * \return The alignment.
+ */
+template<seqan3::alphabet alphabet_type>
+multiple_alignment<alphabet_type> read_clustal_file(std::filesystem::path const & filepath)
+{
+    // Open filepath as stream.
+    std::ifstream stream(filepath, std::ios_base::in | std::ios::binary);
+    if (!stream.good())
+        throw seqan3::file_open_error{"Could not open file " + filepath.string() + " for reading."};
+
+    auto result = read_clustal_file<alphabet_type>(stream);
+    stream.close();
+    return std::move(result);
 }
 
 } // namespace mars

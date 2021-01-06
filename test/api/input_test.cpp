@@ -7,6 +7,7 @@
 #include <seqan3/alphabet/gap/gapped.hpp>
 #include <seqan3/alphabet/nucleotide/rna5.hpp>
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/io/exception.hpp>
 #include <seqan3/range/views/char_to.hpp>
 #include <seqan3/test/expect_range_eq.hpp>
 
@@ -47,3 +48,42 @@ TEST(Input, ReadClustalFile)
     EXPECT_RANGE_EQ(msa.sequences, alignment);
     EXPECT_RANGE_EQ(msa.names, names);
 }
+
+TEST(Input, FailFileNotFound)
+{
+    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(std::filesystem::path{"not_exist.aln"}),
+                 seqan3::file_open_error);
+}
+
+TEST(Input, FailClustalHeader)
+{
+    std::stringstream str{"CLUSTER FORMAT\n\n"};
+    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(str), seqan3::parse_error);
+}
+
+TEST(Input, FailWrongSequenceId)
+{
+    std::stringstream str{"CLUSTAL FORMAT\n"
+                          "\n"
+                          "M83762.1-1031_1093      gcuuuaaaagc-uuu---gcugaagcaacggcc----uuguaagucguag\n"
+                          "AC008670.6-83725_83795  acuuuuaaagg-aua-acagccauccguugguc----uuaggccccaaaa\n"
+                          "                                 *               *                        \n"
+                          "\n"
+                          "M83762.1-1031_1093      aa-aacu--a-ua---cguuuuaaagcu\n"
+                          "wrong-sequence-id       au-uuuggugcaacuccaaauaaaagua\n"
+                          "                                    *               \n"
+                          "\n"};
+    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(str), seqan3::parse_error);
+}
+
+TEST(Input, FailInvalidCharacter)
+{
+    std::stringstream str{"CLUSTAL FORMAT\n"
+                          "\n"
+                          "M83762.1-1031_1093      gcuzuaaaagc-uuu---gcugaagcaacggcc----uuguaagucguag\n"
+                          "AC008670.6-83725_83795  acuuuuaaagg-aua-acagccauccguugguc----uuaggccccaaaa\n"
+                          "                                 *               *                        \n"
+                          "\n"};
+    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(str), seqan3::parse_error);
+}
+

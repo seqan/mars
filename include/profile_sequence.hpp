@@ -63,10 +63,7 @@ public:
         }
         else
         {
-            /*!\brief Helper function to increase the respective character frequency by a fraction.
-             * \param div The fraction of a count, e.g. 3 increases the frequency by 1/3.
-             * \param x The character of which the count is increased.
-             */
+            // Helper function to increase the respective character frequency by a fraction `div`.
             auto const incr = [this] (short div, char x) { tally[alph_type{}.assign_char(x).to_rank()] += one/div; };
 
             switch (chr.to_char())
