@@ -5,6 +5,7 @@
 #include <seqan3/alphabet/nucleotide/all.hpp>
 #include <seqan3/test/expect_range_eq.hpp>
 
+#include "bi_alphabet.hpp"
 #include "profile_sequence.hpp"
 
 TEST(ProfileChar, SimpleIncrementAndQuantity)
@@ -13,7 +14,7 @@ TEST(ProfileChar, SimpleIncrementAndQuantity)
     mars::profile_char<seqan3::rna4> prof{};
     prof.increment('U'_rna4);
     prof.increment('A'_rna4);
-    prof.increment('A'_rna4);
+    prof.increment(0); // A (Rna4)
     EXPECT_FLOAT_EQ(prof.quantity('A'_rna4), 2);
     EXPECT_FLOAT_EQ(prof.quantity('C'_rna4), 0);
     EXPECT_FLOAT_EQ(prof.quantity('G'_rna4), 0);
@@ -69,7 +70,7 @@ TEST(ProfileChar, ConvertIncrementRna4Rna15)
     mars::profile_char<seqan3::rna15> prof{};
     prof.increment('T'_rna4); // U
     prof.increment('A'_rna4);
-    prof.increment('G'_rna4);
+    prof.increment(4);        // G (Rna15)
     prof.increment('U'_rna4);
     prof.increment('G'_rna4);
     prof.increment('C'_rna4); //                              A  B  C  D  G  H  K  M  N  R  S  U  V  W  Y
@@ -87,4 +88,18 @@ TEST(ProfileChar, StreamOperator)
     std::ostringstream os{};
     os << prof;
     EXPECT_STREQ(os.str().c_str(), "(2,0,0,1)");
+}
+
+TEST(ProfileChar, BiAlphabet)
+{
+    using seqan3::operator""_rna4;
+    mars::profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
+    prof.increment(2);
+    prof.increment(4);
+    prof.increment(6); //                                     AA AC AG AU CA CC CG CU GA GC GG GU UA UC UG UU
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
+    prof.increment({'C'_rna4, 'G'_rna4});
+    prof.increment({'U'_rna4, 'A'_rna4});
+    prof.increment({'U'_rna4, 'U'_rna4});
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0, 0, 1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 1}));
 }

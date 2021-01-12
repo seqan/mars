@@ -36,6 +36,15 @@ public:
     ~profile_char()                                          noexcept = default; //!< Defaulted.
 
     /*!\brief Increase the character count by 1.
+     * \param rnk The rank of the character of which the count is incremented.
+     */
+    void increment(seqan3::alphabet_rank_t<alph_type> rnk)
+    {
+        assert(rnk < size);
+        tally[rnk] += one;
+    }
+
+    /*!\brief Increase the character count by 1.
      * \param chr The character of which the count is incremented.
      */
     void increment(alph_type chr)
@@ -52,11 +61,11 @@ public:
      * (e.g. M = 1/2 A + 1/2 C).
      */
     template <seqan3::nucleotide_alphabet ext_alph_type>
+    //!\cond
+        requires seqan3::nucleotide_alphabet<alph_type>
+    //!\endcond
     void increment(ext_alph_type chr)
     {
-        static_assert(seqan3::nucleotide_alphabet<alph_type>,
-                      "Wildcard conversion is only implemented for nucleotide alphabets.");
-
         if constexpr (seqan3::alphabet_size<ext_alph_type> <= seqan3::alphabet_size<alph_type>)
         {
             increment(alph_type{chr}); // DNA-RNA conversion or convert into a larger alphabet
@@ -64,7 +73,7 @@ public:
         else
         {
             // Helper function to increase the respective character frequency by a fraction `div`.
-            auto const incr = [this] (short div, char x) { tally[alph_type{}.assign_char(x).to_rank()] += one/div; };
+            auto const incr = [this] (uint32_t div, char x) { tally[alph_type{}.assign_char(x).to_rank()] += one/div; };
 
             switch (chr.to_char())
             {
@@ -146,5 +155,8 @@ inline ostream_type & operator<<(ostream_type & os, profile_char<alph_type> cons
     os << ")";
     return os;
 }
+
+template <seqan3::semialphabet alph_type>
+using profile_sequence = std::vector<profile_char<alph_type>>;
 
 } // namespace mars

@@ -22,19 +22,10 @@
 //#include <seqan3/utility/char_operations/predicate.hpp>
 //#include <seqan3/utility/detail/type_name_as_string.hpp>
 
+#include "multiple_alignment.hpp"
+
 namespace mars
 {
-
-/*!
- * \brief A multiple alignment representation.
- * \tparam alphabet_type The alphabet type of the contained sequences.
- */
-template<seqan3::alphabet alphabet_type>
-struct multiple_alignment
-{
-    std::vector<std::vector<seqan3::gapped<alphabet_type>>> sequences;
-    std::vector<std::string> names;
-};
 
 /*!
  * \brief Read a CLUSTAL file (*.aln) into a multiple alignment representation.

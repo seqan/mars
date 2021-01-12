@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.8)
 include (ExternalProject)
 ExternalProject_Add (googletest
                      GIT_REPOSITORY    "https://github.com/google/googletest.git"
-                     GIT_TAG           "master"
+                     GIT_TAG           "release-1.10.0"
                      GIT_SHALLOW
                      PREFIX            "${CMAKE_CURRENT_BINARY_DIR}/googletest"
                      UPDATE_COMMAND    ""   # omit update step

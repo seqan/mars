@@ -30,9 +30,6 @@ public:
     //!\brief The template parameter as member type.
     using alphabet_type = alphabet_t;
 
-    //!\brief Equals the char_type of alphabet_type.
-    using char_type = seqan3::alphabet_char_t<alphabet_type>;
-
     /*!\name Constructors, destructor and assignment
      * \{
      */
@@ -44,28 +41,13 @@ public:
     ~bi_alphabet()                                          noexcept = default; //!< Defaulted.
 
     using base_type::base_type; // Inherit non-default constructors
-
-    //!\brief Construction with a character.
-    constexpr explicit bi_alphabet(alphabet_type const alph) noexcept
-    {
-        get<0>(*this) = alph;
-        get<1>(*this) = alph;
-    }
-
-    //!\brief Assignment of both fields the same character.
-    constexpr bi_alphabet & operator=(alphabet_type const alph) noexcept
-    {
-        get<0>(*this) = alph;
-        get<1>(*this) = alph;
-        return *this;
-    }
     //!\}
 
     // Inherit operators from base
     using base_type::operator=;
 
     //!\brief Validate whether a character is valid in the underlying alphabet.
-    static constexpr bool char_is_valid(char_type const c) noexcept
+    static constexpr bool char_is_valid(char c) noexcept
     {
         return seqan3::char_is_valid_for<alphabet_type>(c);
     }
@@ -73,7 +55,7 @@ public:
 
 //!\brief Type deduction guide enables usage of bi_alphabet without specifying template args.
 //!\relates bi_alphabet
-template <typename alphabet_type>
-bi_alphabet(alphabet_type &&) -> bi_alphabet<std::decay_t<alphabet_type>>;
+template <seqan3::writable_semialphabet alphabet_type>
+bi_alphabet(alphabet_type &&, alphabet_type &&) -> bi_alphabet<std::decay_t<alphabet_type>>;
 
 } // namespace mars

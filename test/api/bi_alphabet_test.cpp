@@ -7,46 +7,92 @@
 
 #include "bi_alphabet.hpp"
 
+TEST(BiAlphabet, Concept)
+{
+    EXPECT_TRUE(seqan3::writable_semialphabet<mars::bi_alphabet<seqan3::rna4>>);
+    EXPECT_TRUE(seqan3::writable_semialphabet<mars::bi_alphabet<seqan3::dna5>>);
+    EXPECT_TRUE(seqan3::writable_semialphabet<mars::bi_alphabet<mars::bi_alphabet<seqan3::dna5>>>);
+}
+
 TEST(BiAlphabet, AlphabetSize)
 {
-    using alph_t = mars::bi_alphabet<seqan3::rna4>;
-    EXPECT_EQ(seqan3::alphabet_size<alph_t>, 16u);
+    EXPECT_EQ(seqan3::alphabet_size<mars::bi_alphabet<seqan3::rna4>>, 16u);
+    EXPECT_EQ(seqan3::alphabet_size<mars::bi_alphabet<seqan3::rna5>>, 25u);
 }
 
 TEST(BiAlphabet, Construction)
 {
     using seqan3::operator""_rna4;
-    using alph_t = mars::bi_alphabet<seqan3::rna4>;
-    alph_t chr{'A'_rna4, 'C'_rna4};
-    alph_t chr2 = chr;
-    EXPECT_EQ(chr2, chr);
-    EXPECT_EQ(chr2, (alph_t{'A'_rna4, 'C'_rna4}));
-    alph_t chr3{'G'_rna4};
-    EXPECT_EQ(chr3, (alph_t{'G'_rna4, 'G'_rna4}));
+
+    mars::bi_alphabet<seqan3::rna4> chr1{'A'_rna4, 'C'_rna4};
+    // type deduction
+    mars::bi_alphabet chr2{'A'_rna4, 'C'_rna4};
+    EXPECT_TRUE((std::is_same_v<decltype(chr1), decltype(chr2)>));
+    EXPECT_TRUE(chr1 == chr2);
 }
 
 TEST(BiAlphabet, Assignment)
 {
     using seqan3::operator""_rna5;
     using seqan3::get;
-    using alph_t = mars::bi_alphabet<seqan3::rna5>;
-    alph_t chr{};
-    EXPECT_EQ(chr, (alph_t{'A'_rna5, 'A'_rna5}));
-    chr = 'U'_rna5;
-    EXPECT_EQ(chr, (alph_t{'U'_rna5, 'U'_rna5}));
+
+    // default construction
+    mars::bi_alphabet<seqan3::rna5> chr{};
+    EXPECT_TRUE(chr == (mars::bi_alphabet{'A'_rna5, 'A'_rna5}));
+
+    // assignment
+    chr = mars::bi_alphabet{'U'_rna5, 'U'_rna5};
+    EXPECT_TRUE(chr == (mars::bi_alphabet{'U'_rna5, 'U'_rna5}));
+
+    // partial assignment
     get<1>(chr) = 'N'_rna5;
-    EXPECT_EQ(chr, (alph_t{'U'_rna5, 'N'_rna5}));
+    EXPECT_TRUE(chr == (mars::bi_alphabet{'U'_rna5, 'N'_rna5}));
 }
 
-TEST(BiAlphabet, Value)
+TEST(BiAlphabet, GetValue)
 {
     using seqan3::operator""_rna5;
     using seqan3::get;
-    mars::bi_alphabet<seqan3::rna5> chr{'G'_rna5, 'C'_rna5};
-    EXPECT_EQ(get<0>(chr), 'G'_rna5);
-    EXPECT_EQ(get<1>(chr), 'C'_rna5);
+
+    mars::bi_alphabet chr{'G'_rna5, 'C'_rna5};
+    EXPECT_TRUE(get<0>(chr) == 'G'_rna5);
+    EXPECT_TRUE(get<1>(chr) == 'C'_rna5);
 }
 
+TEST(BiAlphabet, Rank)
+{
+    using seqan3::operator""_rna4;
+    using seqan3::get;
+
+    // retrieve rank
+    mars::bi_alphabet chr{'G'_rna4, 'C'_rna4};
+    auto rnk = chr.to_rank();
+    EXPECT_TRUE((std::is_same_v<decltype(rnk), uint8_t>));
+    EXPECT_EQ(rnk, 9);
+
+    // assign rank
+    chr.assign_rank(7);
+    EXPECT_TRUE(get<0>(chr) == 'C'_rna4);
+    EXPECT_TRUE(get<1>(chr) == 'U'_rna4);
+}
+
+TEST(BiAlphabet, CharIsValid)
+{
+    using seqan3::operator""_rna5;
+
+    // function call from member
+    mars::bi_alphabet chr{'G'_rna5, 'C'_rna5};
+    EXPECT_TRUE(chr.char_is_valid('U'));
+    EXPECT_TRUE(chr.char_is_valid('N'));
+    EXPECT_FALSE(chr.char_is_valid('M'));
+
+    // function call from class
+    EXPECT_TRUE(mars::bi_alphabet<seqan3::rna4>::char_is_valid('c'));
+    EXPECT_FALSE(mars::bi_alphabet<seqan3::rna4>::char_is_valid('N'));
+    EXPECT_FALSE(mars::bi_alphabet<seqan3::rna4>::char_is_valid('S'));
+}
+
+// Test templates for semi alphabet
 using bi_types = ::testing::Types<mars::bi_alphabet<seqan3::rna4>,
                                   mars::bi_alphabet<seqan3::rna5>,
                                   mars::bi_alphabet<seqan3::dna4>,
