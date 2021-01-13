@@ -54,8 +54,31 @@ int main(int argc, char ** argv)
     mars::stemloop_type stemloops = mars::detect_stem_loops(bpseq, plevel);
     seqan3::debug_stream << stemloops << "\n";
 
+    std::vector<mars::stem_loop_motif> motifs{};
     for (std::pair<int, int> const & pos : stemloops)
-        mars::analyze_stem_loop(msa, bpseq, pos);
+    {
+        motifs.push_back(mars::analyze_stem_loop(msa, bpseq, pos));
+    }
+
+    for (auto & motif : motifs)
+    {
+        for (auto const & el : motif.elements)
+        {
+            std::visit([] (auto element)
+            {
+                if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
+                {
+                    seqan3::debug_stream << "Loop " << (element.is_5prime ? "5' " : "3' ");
+                }
+                else
+                {
+                    seqan3::debug_stream << "Stem ";
+                }
+                seqan3::debug_stream << element.profile << "\n";
+
+            }, el);
+        }
+    }
 
     return 0;
 }

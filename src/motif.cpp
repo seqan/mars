@@ -1,6 +1,8 @@
 #include <seqan3/std/ranges>
 
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/range/views/deep.hpp>
+#include <seqan3/range/views/slice.hpp>
 #include <seqan3/range/views/zip.hpp>
 
 #include "bi_alphabet.hpp"
@@ -56,6 +58,98 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
 {
     stem_loop_motif motif{};
     motif.bounds = pos;
+    auto ali = msa.sequences | seqan3::views::deep{seqan3::views::slice}(pos.first, pos.second + 1);
+    auto pairs = bpseq | seqan3::views::slice(pos.first, pos.second + 1);
+    int left = pos.first;
+    int right = pos.second;
+
+//    bool in_stem = false;
+//    secondary_structure str{};
+//
+    seqan3::debug_stream << pos.first << "\t" << pos.second << std::endl;
+    seqan3::debug_stream << ali << std::endl;
+    seqan3::debug_stream << pairs << std::endl;
+
+    while (left <= right)
+    {
+        if (bpseq[left] == right) // stem
+        {
+            stem_element & stem = motif.new_stem();
+            do
+            {
+                assert(bpseq[right] == left);
+                seqan3::debug_stream << "add to stack: " << left << " & " << right;
+                profile_char<mars::bi_alphabet<seqan3::rna4>> p{};
+                for (auto const & seq : msa.sequences)
+                {
+                    if (seq[left] != seqan3::gap() && seq[right] != seqan3::gap())
+                    {
+                        seqan3::rna4 r;
+                        seqan3::assign_char_to(seqan3::to_char(seq[left]), r);
+                        seqan3::rna4 s;
+                        seqan3::assign_char_to(seqan3::to_char(seq[right]), s);
+                        p.increment({r, s});
+                    }
+                }
+                seqan3::debug_stream << "\t profile " << p << std::endl;
+                stem.profile.push_back(p);
+                ++left;
+                --right;
+            }
+            while (bpseq[left] == right);
+        }
+
+        if (bpseq[left] < pos.first || bpseq[left] > pos.second)
+        {
+            loop_element & loop = motif.new_loop();
+            loop.is_5prime = true;
+            do
+            {
+                seqan3::debug_stream << "left loop: " << left;
+                profile_char<seqan3::rna4> p{};
+                for (auto const & seq : msa.sequences)
+                {
+                    if (seq[left] != seqan3::gap())
+                    {
+                        seqan3::rna15 r;
+                        seqan3::assign_char_to(seqan3::to_char(seq[left]), r);
+                        p.increment(r);
+                    }
+                }
+                seqan3::debug_stream << "\t profile " << p << std::endl;
+                loop.profile.push_back(p);
+                ++left;
+            }
+            while (bpseq[left] < pos.first || bpseq[left] > pos.second);
+        }
+        else if (bpseq[right] < pos.first || bpseq[right] > pos.second)
+        {
+            loop_element & loop = motif.new_loop();
+            loop.is_5prime = false;
+            do
+            {
+                seqan3::debug_stream << "right loop: " << right;
+                profile_char<seqan3::rna4> p{};
+                for (auto const & seq : msa.sequences)
+                {
+                    if (seq[right] != seqan3::gap())
+                    {
+                        seqan3::rna15 r;
+                        seqan3::assign_char_to(seqan3::to_char(seq[left]), r);
+                        p.increment(r);
+                    }
+                }
+                seqan3::debug_stream << "\t profile " << p << std::endl;
+                loop.profile.push_back(p);
+                --right;
+            }
+            while (bpseq[right] < pos.first || bpseq[right] > pos.second);
+        }
+        else
+        {
+            assert(false);
+        }
+    }
 
     return std::move(motif);
 }

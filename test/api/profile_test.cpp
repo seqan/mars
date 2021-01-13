@@ -6,7 +6,7 @@
 #include <seqan3/test/expect_range_eq.hpp>
 
 #include "bi_alphabet.hpp"
-#include "profile_sequence.hpp"
+#include "profile_char.hpp"
 
 TEST(ProfileChar, SimpleIncrementAndQuantity)
 {

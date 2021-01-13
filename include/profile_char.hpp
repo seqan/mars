@@ -21,7 +21,7 @@ private:
     //!\brief The internal representation of a single count.
     static constexpr uint32_t one{600};
 
-    //!\brief We store the count values here.
+    //!\brief The number of occurrences of each character.
     std::array<uint32_t, size> tally;
 
 public:
@@ -155,8 +155,5 @@ inline ostream_type & operator<<(ostream_type & os, profile_char<alph_type> cons
     os << ")";
     return os;
 }
-
-template <seqan3::semialphabet alph_type>
-using profile_sequence = std::vector<profile_char<alph_type>>;
 
 } // namespace mars

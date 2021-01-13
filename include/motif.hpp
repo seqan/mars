@@ -8,7 +8,7 @@
 
 #include "bi_alphabet.hpp"
 #include "multiple_alignment.hpp"
-#include "profile_sequence.hpp"
+#include "profile_char.hpp"
 
 namespace mars
 {
@@ -22,21 +22,40 @@ typedef std::pair<value_type, value_type> interval_type;
 //!\brief Store {min, median, max} of a distribution.
 typedef std::tuple<value_type, value_type, value_type> stat_type;
 
-struct secondary_structure
+struct loop_element
 {
-    using stem_t = profile_sequence<bi_alphabet<seqan3::rna4>>;
-    using loop_t = profile_sequence<seqan3::rna4>;
-    bool loop_left;
-    std::variant<stem_t, loop_t> profile;
     stat_type length;
-    // TODO: gaps
+    std::vector<profile_char<seqan3::rna4>> profile;
+    std::vector<std::unordered_map<uint16_t, uint16_t>> gaps;
+    bool is_5prime;
+};
+
+struct stem_element
+{
+    stat_type length;
+    std::vector<profile_char<bi_alphabet<seqan3::rna4>>> profile;
+    std::vector<std::unordered_map<uint16_t, uint16_t>> gaps;
 };
 
 struct stem_loop_motif
 {
+    using element_type = std::variant<loop_element, stem_element>;
+
     interval_type bounds;
     stat_type length;
-    std::vector<secondary_structure> elements;
+    std::vector<element_type> elements;
+
+    stem_element & new_stem()
+    {
+        elements.emplace_back<stem_element>({});
+        return std::get<stem_element>(elements.back());
+    }
+
+    loop_element & new_loop()
+    {
+        elements.emplace_back<loop_element>({});
+        return std::get<loop_element>(elements.back());
+    }
 };
 
 using stemloop_type = std::vector<std::pair<int, int>>;
