@@ -4,9 +4,9 @@
 
 #include <seqan3/test/expect_range_eq.hpp>
 
-#include "motif_store.hpp"
+#include "motif.hpp"
 
-TEST(MotifStore, StemloopPartition)
+TEST(Stemloop, Detection)
 {
     std::vector<int> bpseq{76,75,74,73,72,71,70,-1,-1,-1,
                            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -25,9 +25,8 @@ TEST(MotifStore, StemloopPartition)
                             -1,-1,-1,-1,-1, 0, 0, 0, 0,-1,
                              0, 0, 0, 0, 0, 0, 0,-1};
 
-    mars::motif_store motifs(std::move(bpseq));
-    motifs.stem_loop_partition(std::move(plevel));
+    mars::stemloop_type stemloops = mars::detect_stem_loops(bpseq, plevel);
 
-    std::vector<std::pair<int, int>> expected {{27,47}, {54,68}};
-    EXPECT_RANGE_EQ(motifs.get_stemloops(), expected);
+    mars::stemloop_type expected {{27,47}, {54,68}};
+    EXPECT_RANGE_EQ(stemloops, expected);
 }

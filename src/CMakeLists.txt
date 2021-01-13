@@ -1,9 +1,20 @@
 cmake_minimum_required (VERSION 3.8)
 
-# An object library (without main) to be used in multiple targets.
-add_library ("${PROJECT_NAME}_lib" STATIC motif_store.cpp)
-target_link_libraries ("${PROJECT_NAME}_lib" PUBLIC seqan3::seqan3 IPknot)
+# io
+add_library (io STATIC input_output.cpp)
+target_link_libraries (io PUBLIC seqan3::seqan3)
+target_include_directories (io PUBLIC ../include)
+
+# structure
+add_library (structure STATIC structure.cpp)
+target_link_libraries (structure PUBLIC IPknot seqan3::seqan3)
+target_include_directories (structure PUBLIC ../include)
+
+# motif store
+add_library (motif STATIC motif.cpp)
+target_link_libraries (motif PUBLIC seqan3::seqan3)
+target_include_directories (motif PUBLIC ../include)
 
 # The mars executable consists of main.cpp and the linked object library.
 add_executable ("${PROJECT_NAME}" main.cpp)
-target_link_libraries ("${PROJECT_NAME}" PUBLIC "${PROJECT_NAME}_lib")
+target_link_libraries ("${PROJECT_NAME}" PUBLIC motif io structure)

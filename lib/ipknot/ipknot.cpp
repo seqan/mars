@@ -579,5 +579,5 @@ std::pair<std::vector<int>, std::vector<int>> run_ipknot(std::list<std::string> 
     delete e2;
     delete en;
 
-    return std::make_pair(bpseq, plevel);
+    return std::move(std::make_pair(bpseq, plevel));
 }

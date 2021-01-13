@@ -5,13 +5,13 @@
 #include <string_view>
 
 #include <seqan3/alphabet/gap/gapped.hpp>
-#include <seqan3/alphabet/nucleotide/rna5.hpp>
+#include <seqan3/alphabet/nucleotide/rna15.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/exception.hpp>
 #include <seqan3/range/views/char_to.hpp>
 #include <seqan3/test/expect_range_eq.hpp>
 
-#include "input.hpp"
+#include "input_output.hpp"
 
 // Generate the full path of a test input file that is provided in the data directory.
 std::filesystem::path data(std::string const & filename)
@@ -19,7 +19,7 @@ std::filesystem::path data(std::string const & filename)
     return std::filesystem::path{std::string{DATADIR}}.concat(filename);
 }
 
-TEST(Input, ReadClustalFile)
+TEST(ClustalInput, ReadFile)
 {
     std::vector<std::string> names
     {
@@ -30,38 +30,38 @@ TEST(Input, ReadClustalFile)
         {"AB042432.1-14140_14072"}
     };
 
-    std::vector<std::vector<seqan3::gapped<seqan3::rna5>>> alignment{5};
+    std::vector<std::vector<seqan3::gapped<seqan3::rna15>>> alignment{5};
     using std::ranges::copy;
     copy(std::string_view{"gcuuuaaaagc-uuu---gcugaagcaacggcc----uuguaagucguagaa-aacu--a-ua---cguuuuaaagcu"}
-        | seqan3::views::char_to<seqan3::gapped<seqan3::rna5>>, std::cpp20::back_inserter(alignment[0]));
+        | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(alignment[0]));
     copy(std::string_view{"acuuuuaaagg-aua-acagccauccguugguc----uuaggccccaaaaau-uuuggugcaacuccaaauaaaagua"}
-        | seqan3::views::char_to<seqan3::gapped<seqan3::rna5>>, std::cpp20::back_inserter(alignment[1]));
+        | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(alignment[1]));
     copy(std::string_view{"gcgguuguggcgaag-ugguuaacgcaccagauuguggcucuggcacuc----guggguucgauucccaucaaucgcc"}
-        | seqan3::views::char_to<seqan3::gapped<seqan3::rna5>>, std::cpp20::back_inserter(alignment[2]));
+        | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(alignment[2]));
     copy(std::string_view{"gcucauguagc-ucaguugguagagcacacccu----ugguaagggugaggucagcgguucaaauccgcucaugagcu"}
-        | seqan3::views::char_to<seqan3::gapped<seqan3::rna5>>, std::cpp20::back_inserter(alignment[3]));
+        | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(alignment[3]));
     copy(std::string_view{"guuucuguagu-ugaau---uacaacgaugauu----uuucaugucauuggu-cgcaguugaaugcuguguagaaaua"}
-        | seqan3::views::char_to<seqan3::gapped<seqan3::rna5>>, std::cpp20::back_inserter(alignment[4]));
+        | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(alignment[4]));
 
-    mars::multiple_alignment<seqan3::rna5> msa = mars::read_clustal_file<seqan3::rna5>(data("tRNA.aln"));
+    mars::multiple_alignment msa = mars::read_msa(data("tRNA.aln"));
 
     EXPECT_RANGE_EQ(msa.sequences, alignment);
     EXPECT_RANGE_EQ(msa.names, names);
 }
 
-TEST(Input, FailFileNotFound)
+TEST(ClustalInput, FailFileNotFound)
 {
-    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(std::filesystem::path{"not_exist.aln"}),
+    EXPECT_THROW(mars::read_msa(std::filesystem::path{"not_exist.aln"}),
                  seqan3::file_open_error);
 }
 
-TEST(Input, FailClustalHeader)
+TEST(ClustalInput, FailClustalHeader)
 {
     std::stringstream str{"CLUSTER FORMAT\n\n"};
-    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(str), seqan3::parse_error);
+    EXPECT_THROW(mars::read_msa(str), seqan3::parse_error);
 }
 
-TEST(Input, FailWrongSequenceId)
+TEST(ClustalInput, FailWrongSequenceId)
 {
     std::stringstream str{"CLUSTAL FORMAT\n"
                           "\n"
@@ -73,10 +73,10 @@ TEST(Input, FailWrongSequenceId)
                           "wrong-sequence-id       au-uuuggugcaacuccaaauaaaagua\n"
                           "                                    *               \n"
                           "\n"};
-    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(str), seqan3::parse_error);
+    EXPECT_THROW(mars::read_msa(str), seqan3::parse_error);
 }
 
-TEST(Input, FailInvalidCharacter)
+TEST(ClustalInput, FailInvalidCharacter)
 {
     std::stringstream str{"CLUSTAL FORMAT\n"
                           "\n"
@@ -84,6 +84,6 @@ TEST(Input, FailInvalidCharacter)
                           "AC008670.6-83725_83795  acuuuuaaagg-aua-acagccauccguugguc----uuaggccccaaaa\n"
                           "                                 *               *                        \n"
                           "\n"};
-    EXPECT_THROW(mars::read_clustal_file<seqan3::rna5>(str), seqan3::parse_error);
+    EXPECT_THROW(mars::read_msa(str), seqan3::parse_error);
 }
 

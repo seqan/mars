@@ -5,6 +5,7 @@
 
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/gap/gapped.hpp>
+#include <seqan3/alphabet/nucleotide/rna15.hpp>
 
 namespace mars
 {
@@ -19,5 +20,8 @@ struct multiple_alignment
     std::vector<std::vector<seqan3::gapped<alphabet_type>>> sequences;
     std::vector<std::string> names;
 };
+
+//!\brief The multiple alignment type used in MaRs.
+using msa_type = multiple_alignment<seqan3::rna15>;
 
 } // namespace mars

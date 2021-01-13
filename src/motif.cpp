@@ -3,9 +3,13 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/views/zip.hpp>
 
-#include "motif_store.hpp"
+#include "bi_alphabet.hpp"
+#include "motif.hpp"
 
-void mars::motif_store::stem_loop_partition(std::vector<int> plevel)
+namespace mars
+{
+
+stemloop_type detect_stem_loops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
 {
     struct pk_info
     {
@@ -14,8 +18,10 @@ void mars::motif_store::stem_loop_partition(std::vector<int> plevel)
         std::pair<int, int> previous;
     };
     std::vector<pk_info> pk_infos{};
+    stemloop_type stemloops;
 
-    for (auto && [idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
+    // 0-based indices
+    for (auto &&[idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
     {
         if (pk == -1) // skip unpaired
             continue;
@@ -43,6 +49,15 @@ void mars::motif_store::stem_loop_partition(std::vector<int> plevel)
             ++status.level;
         }
     }
-
-    seqan3::debug_stream << stemloops << "\n";
+    return std::move(stemloops);
 }
+
+stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & bpseq, std::pair<int, int> const & pos)
+{
+    stem_loop_motif motif{};
+    motif.bounds = pos;
+
+    return std::move(motif);
+}
+
+} // namespace mars

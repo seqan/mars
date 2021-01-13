@@ -19,7 +19,7 @@ addons:
       - sourceline: 'ppa:ubuntu-toolchain-r/test'
     packages:
       - g++-7
-      - g++-8
+#      - g++-8
       - g++-9
       - g++-10
       - libboost-all-dev
@@ -37,21 +37,21 @@ jobs:
         - CXX=g++-7
         - CC=gcc-7
         - BUILD_TYPE=Release
-    - os: linux
-      name: "Release gcc8"
-      cache: [ccache, apt]
-      env:
-        - CXX=g++-8
-        - CC=gcc-8
-        - BUILD_TYPE=Release
-    - os: linux
-      name: "Release gcc9 std=c++2a"
-      cache: [ccache, apt]
-      env:
-        - CXX=g++-9
-        - CC=gcc-9
-        - BUILD_TYPE=Release
-        - CXXFLAGS=-std=c++2a
+#    - os: linux
+#      name: "Release gcc8"
+#      cache: [ccache, apt]
+#      env:
+#        - CXX=g++-8
+#        - CC=gcc-8
+#        - BUILD_TYPE=Release
+#    - os: linux
+#      name: "Release gcc9 std=c++2a"
+#      cache: [ccache, apt]
+#      env:
+#        - CXX=g++-9
+#        - CC=gcc-9
+#        - BUILD_TYPE=Release
+#        - CXXFLAGS=-std=c++2a
     - os: linux
       name: "Debug gcc9"
       cache: [ccache, apt]

@@ -1,18 +1,12 @@
-#include <seqan3/std/algorithm>
 #include <seqan3/std/filesystem>
-#include <seqan3/std/iterator>
-#include <list>
 
-#include <seqan3/alphabet/nucleotide/rna4.hpp>
+#include <seqan3/alphabet/nucleotide/rna15.hpp>
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
-#include <seqan3/range/views/to_char.hpp>
-#include <seqan3/range/views/zip.hpp>
 
-
-#include "input.hpp"
-#include "ipknot.hpp"
-#include "motif_store.hpp"
+#include "input_output.hpp"
+#include "motif.hpp"
+#include "structure.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -50,21 +44,18 @@ int main(int argc, char ** argv)
         return -1;
     }
 
-    auto msa = mars::read_clustal_file<seqan3::rna4>(alignment_file);
+    // Read the alignment
+    mars::msa_type msa = mars::read_msa(alignment_file);
 
-    std::list<std::string> names{msa.names.size()};
-    std::ranges::copy(msa.names, names.begin());
+    // Compute an alignment structure
+    auto && [bpseq, plevel] = mars::compute_structure(msa);
 
-    std::list<std::string> seqs{msa.sequences.size()};
-    for (auto && [src, trg] : seqan3::views::zip(msa.sequences | seqan3::views::to_char, seqs))
-        std::ranges::copy(src, std::cpp20::back_inserter(trg));
-    seqan3::debug_stream << "Names: " << names << "\n";
-    seqan3::debug_stream << "Seqs:  " << seqs << "\n";
+    // Find the stem loops
+    mars::stemloop_type stemloops = mars::detect_stem_loops(bpseq, plevel);
+    seqan3::debug_stream << stemloops << "\n";
 
-    auto && [bpseq, plevel] = run_ipknot(names, seqs);
-
-    mars::motif_store motifs(std::move(bpseq));
-    motifs.stem_loop_partition(std::move(plevel));
+    for (std::pair<int, int> const & pos : stemloops)
+        mars::analyze_stem_loop(msa, bpseq, pos);
 
     return 0;
 }

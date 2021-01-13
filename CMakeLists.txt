@@ -46,7 +46,6 @@ target_include_directories (IPknot SYSTEM PUBLIC lib/ipknot)
 target_link_libraries (IPknot PUBLIC Contrafold Nupack)
 
 add_subdirectory (src)
-target_include_directories ("${PROJECT_NAME}_lib" PUBLIC include)
 
 # Boost is needed for Nupack and Contrafold.
 if (Boost_FOUND)
