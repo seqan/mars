@@ -4,6 +4,9 @@
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
+#include <seqan3/core/type_traits/template_inspection.hpp>
+
+#include "bi_alphabet.hpp"
 
 namespace mars
 {
@@ -16,13 +19,46 @@ class profile_char
 {
 private:
     //!\brief The number of profile entries, i.e. the size of the underlying alphabet.
-    static constexpr size_t size{seqan3::alphabet_size<alph_type>};
+    static constexpr size_t const size{seqan3::alphabet_size<alph_type>};
 
     //!\brief The internal representation of a single count.
-    static constexpr uint32_t one{600};
+    static constexpr uint32_t const one{600};
 
     //!\brief The number of occurrences of each character.
-    std::array<uint32_t, size> tally;
+    std::array<uint32_t, size> tally{};
+
+    //!\brief Convert wildcard characters into their components.
+    static std::string compose(char chr)
+    {
+        switch (chr)
+        {
+            case 'A': return "A";
+            case 'C': return "C";
+            case 'G': return "G";
+            case 'U': return "U";
+            case 'T': return "T";
+            case 'M': return "AC";
+            case 'R': return "AG";
+            case 'W': return "AU";
+            case 'Y': return "CU";
+            case 'S': return "CG";
+            case 'K': return "GU";
+            case 'V': return "ACG";
+            case 'H': return "ACU";
+            case 'D': return "AGU";
+            case 'B': return "CGU";
+            case 'N':
+                if constexpr (!alph_type::char_is_valid('N')) // split 'N' if not supported
+                    return "ACGU";
+                else
+                    return "N";
+            default: throw std::runtime_error(std::string{"Invalid character found: "} + chr);
+//            {
+//                seqan3::debug_stream << "Invalid character found: " << chr << "\n";
+//                return std::string{chr};
+//            }
+        }
+    }
 
 public:
     /*!\name Constructors, destructor and assignment
@@ -52,6 +88,20 @@ public:
         tally[chr.to_rank()] += one;
     }
 
+    /*!\brief Increase the character count by 1.
+     * \tparam ext_alph_type A compatible nucleotide alphabet type that may be smaller than `alph_type`.
+     * \param chr The character of which the count is incremented.
+     */
+    template <seqan3::nucleotide_alphabet ext_alph_type>
+    //!\cond
+        requires seqan3::nucleotide_alphabet<alph_type> &&
+                 (seqan3::alphabet_size<ext_alph_type> <= seqan3::alphabet_size<alph_type>)
+    //!\endcond
+    void increment(ext_alph_type chr)
+    {
+        increment(alph_type{chr}); // DNA-RNA conversion or convert into a larger alphabet
+    }
+
     /*!\brief Increase the character count (by 1 in total).
      * \tparam ext_alph_type The extended alphabet type that may contain wildcards; must be a nucleotide alphabet.
      * \param chr The character of which the count is incremented.
@@ -62,40 +112,68 @@ public:
      */
     template <seqan3::nucleotide_alphabet ext_alph_type>
     //!\cond
-        requires seqan3::nucleotide_alphabet<alph_type>
+        requires seqan3::writable_alphabet<alph_type> &&
+                 (seqan3::alphabet_size<ext_alph_type> > seqan3::alphabet_size<alph_type>)
     //!\endcond
     void increment(ext_alph_type chr)
     {
-        if constexpr (seqan3::alphabet_size<ext_alph_type> <= seqan3::alphabet_size<alph_type>)
-        {
-            increment(alph_type{chr}); // DNA-RNA conversion or convert into a larger alphabet
-        }
-        else
-        {
-            // Helper function to increase the respective character frequency by a fraction `div`.
-            auto const incr = [this] (uint32_t div, char x) { tally[alph_type{}.assign_char(x).to_rank()] += one/div; };
+        std::string composition = compose(chr.to_char());
+        for (char x : composition)
+            tally[alph_type{}.assign_char(x).to_rank()] += one/composition.size();
+    }
 
-            switch (chr.to_char())
-            {
-                case 'M': incr(2, 'A'); incr(2, 'C'); break;
-                case 'R': incr(2, 'A'); incr(2, 'G'); break;
-                case 'W': incr(2, 'A'); incr(2, 'T'); break;
-                case 'Y': incr(2, 'C'); incr(2, 'T'); break;
-                case 'S': incr(2, 'C'); incr(2, 'G'); break;
-                case 'K': incr(2, 'G'); incr(2, 'T'); break;
-                case 'V': incr(3, 'A'); incr(3, 'C'); incr(3, 'G'); break;
-                case 'H': incr(3, 'A'); incr(3, 'C'); incr(3, 'T'); break;
-                case 'D': incr(3, 'A'); incr(3, 'G'); incr(3, 'T'); break;
-                case 'B': incr(3, 'C'); incr(3, 'G'); incr(3, 'T'); break;
-                case 'N':
-                    if constexpr (!seqan3::char_is_valid_for<alph_type>('N')) // split 'N' if not supported
-                    {
-                        incr(4, 'A'); incr(4, 'C'); incr(4, 'G'); incr(4, 'T');
-                        break;
-                    }
-                default: increment(alph_type{chr});
-            }
-        }
+    /*!\brief Increase the character count (by 1 in total) for bi-alphabets.
+     * \tparam ext_alph_type The extended alphabet type that may contain wildcards; must be a nucleotide alphabet.
+     * \param chr1 The first character of the bi-character.
+     * \param chr2 The second character of the bi-character.
+     *
+     * \details
+     * If a wildcard is given, the counts of all matching characters are increased by the same fraction
+     * (e.g. M = 1/2 A + 1/2 C).
+     */
+    template <seqan3::nucleotide_alphabet ext_alph_type>
+    //!\cond
+        requires seqan3::detail::is_type_specialisation_of_v<alph_type, bi_alphabet>
+    //!\endcond
+    void increment(ext_alph_type chr1, ext_alph_type chr2)
+    {
+        std::string composition1 = compose(seqan3::to_char(chr1));
+        std::string composition2 = compose(seqan3::to_char(chr2));
+        size_t len = composition1.size() * composition2.size();
+        for (char x1 : composition1)
+            for (char x2 : composition2)
+                tally[alph_type{}.assign_chars(x1, x2).to_rank()] += one/len;
+    }
+
+    /*!\brief This is an overload for bi-alphabets with gaps. Increase the character count by 1 unless it has a gap.
+     * \tparam inner_alph_type The underlying alphabet type without the gap; must be a writable alphabet.
+     * \param chr1 The first (gapped) character of the bi-character.
+     * \param chr2 The second (gapped) character of the bi-character.
+     * \returns True, if `chr1` or `chr2` is a gap character, false otherwise.
+     */
+    template <seqan3::writable_alphabet inner_alph_type>
+    bool increment(seqan3::gapped<inner_alph_type> chr1, seqan3::gapped<inner_alph_type> chr2)
+    {
+        if (chr1 == seqan3::gap() || chr2 == seqan3::gap())
+            return true;
+
+        increment(inner_alph_type{}.assign_char(chr1.to_char()), inner_alph_type{}.assign_char(chr2.to_char()));
+        return false;
+    }
+
+    /*!\brief This is an overload for gapped alphabets. Increase the character count by 1 unless it is a gap.
+     * \tparam inner_alph_type The underlying alphabet type without the gap; must be a writable alphabet.
+     * \param chr The character of which the count is incremented.
+     * \returns True, if `chr` is a gap character, false otherwise.
+     */
+    template <seqan3::writable_alphabet inner_alph_type>
+    bool increment(seqan3::gapped<inner_alph_type> chr)
+    {
+        if (chr == seqan3::gap())
+            return true;
+
+        increment(inner_alph_type{}.assign_char(chr.to_char()));
+        return false;
     }
 
     /*!\brief Retrieve the quantity of a character.

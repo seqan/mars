@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <seqan3/alphabet/nucleotide/all.hpp>
+#include <seqan3/alphabet/gap/gapped.hpp>
 #include <seqan3/test/expect_range_eq.hpp>
 
 #include "bi_alphabet.hpp"
@@ -77,6 +78,19 @@ TEST(ProfileChar, ConvertIncrementRna4Rna15)
     EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 15>{1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0}));
 }
 
+TEST(ProfileChar, GappedAlphabet)
+{
+    using seqan3::operator""_rna15;
+    mars::profile_char<seqan3::rna4> prof{};
+
+    seqan3::gapped<seqan3::rna15> chr{'m'_rna15};
+    EXPECT_FALSE(prof.increment(chr));
+
+    chr = seqan3::gap();
+    EXPECT_TRUE(prof.increment(chr));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{0.5, 0.5, 0, 0}));
+}
+
 TEST(ProfileChar, StreamOperator)
 {
     using seqan3::operator""_rna4;
@@ -93,13 +107,54 @@ TEST(ProfileChar, StreamOperator)
 TEST(ProfileChar, BiAlphabet)
 {
     using seqan3::operator""_rna4;
+    using seqan3::operator""_rna15;
+
     mars::profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
     prof.increment(2);
     prof.increment(4);
     prof.increment(6); //                                     AA AC AG AU CA CC CG CU GA GC GG GU UA UC UG UU
     EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
+
+    // Assign with alphabet_type.
     prof.increment({'C'_rna4, 'G'_rna4});
     prof.increment({'U'_rna4, 'A'_rna4});
     prof.increment({'U'_rna4, 'U'_rna4});
     EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0, 0, 1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 1}));
+
+    // Assign with two arguments.
+    prof.increment('C'_rna4, 'G'_rna4);
+    prof.increment('A'_rna4, 'A'_rna4);
+    prof.increment('U'_rna4, 'U'_rna4);
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{1, 0, 1, 0, 1, 0, 3, 0, 0, 0, 0, 0, 1, 0, 0, 2}));
+
+    // only N
+    mars::profile_char<mars::bi_alphabet<seqan3::rna5>> n5{};
+    n5.increment('N'_rna15, 'N'_rna15);
+    EXPECT_RANGE_EQ(n5.quantities(), (std::array<float, 25>{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}));
+    n5.increment('C'_rna4, 'C'_rna4);
+    EXPECT_RANGE_EQ(n5.quantities(), (std::array<float, 25>{0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}));
+}
+
+TEST(ProfileChar, BiAlphabetGaps)
+{
+    using seqan3::operator""_rna15;
+    using seqan3::operator""_rna5;
+
+    seqan3::gapped<seqan3::rna15> r{'R'_rna15};
+    seqan3::gapped<seqan3::rna15> n{'N'_rna15};
+    seqan3::gapped<seqan3::rna15> a{'A'_rna15};
+    seqan3::gapped<seqan3::rna15> g{seqan3::gap()};
+
+    mars::profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
+    EXPECT_FALSE(prof.increment(r, r));
+    EXPECT_TRUE(prof.increment(g, n));
+    EXPECT_TRUE(prof.increment(g, g));
+    EXPECT_FALSE(prof.increment(r, r));
+    EXPECT_FALSE(prof.increment(a, a)); //                    AA   AC AG   AU CA CC CG CU GA   GC GG   GU UA UC UG UU
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{1.5, 0, 0.5, 0, 0, 0, 0, 0, 0.5, 0, 0.5, 0, 0, 0, 0, 0}));
+
+    prof.increment('A'_rna15, 'N'_rna15);
+    prof.increment('A'_rna15, 'N'_rna15);
+    prof.increment('C'_rna15, 'C'_rna15); //                  AA AC   AG AU   CA CC CG CU GA   GC GG   GU UA UC UG UU
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{2, 0.5, 1, 0.5, 0, 1, 0, 0, 0.5, 0, 0.5, 0, 0, 0, 0, 0}));
 }

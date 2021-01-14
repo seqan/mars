@@ -76,6 +76,28 @@ TEST(BiAlphabet, Rank)
     EXPECT_TRUE(get<1>(chr) == 'U'_rna4);
 }
 
+TEST(BiAlphabet, ToChars)
+{
+    using seqan3::operator ""_rna4;
+
+    mars::bi_alphabet bi{'G'_rna4, 'C'_rna4};
+    auto chrs = bi.to_chars();
+    EXPECT_TRUE((std::is_same_v<decltype(chrs), std::pair<char, char>>));
+    EXPECT_EQ(chrs.first, 'G');
+    EXPECT_EQ(chrs.second, 'C');
+}
+
+TEST(BiAlphabet, AssignChars)
+{
+    using seqan3::operator ""_rna5;
+    using seqan3::get;
+
+    mars::bi_alphabet<seqan3::rna5> bi;
+    bi.assign_chars('C', 'U');
+    EXPECT_TRUE(get<0>(bi) == 'C'_rna5);
+    EXPECT_TRUE(get<1>(bi) == 'U'_rna5);
+}
+
 TEST(BiAlphabet, CharIsValid)
 {
     using seqan3::operator""_rna5;

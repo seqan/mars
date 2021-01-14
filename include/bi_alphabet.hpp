@@ -1,11 +1,6 @@
 #pragma once
 
-#include <array>
-#include <vector>
-
 #include <seqan3/alphabet/composite/alphabet_tuple_base.hpp>
-#include <seqan3/alphabet/concept.hpp>
-#include <seqan3/alphabet/nucleotide/concept.hpp>
 
 namespace mars
 {
@@ -50,6 +45,20 @@ public:
     static constexpr bool char_is_valid(char c) noexcept
     {
         return seqan3::char_is_valid_for<alphabet_type>(c);
+    }
+
+    //!\brief Assign from a character pair. This modifies the internal sequence letter.
+    constexpr bi_alphabet & assign_chars(char c1, char c2) noexcept
+    {
+        seqan3::assign_char_to(c1, get<0>(*this));
+        seqan3::assign_char_to(c2, get<1>(*this));
+        return *this;
+    }
+
+    //!\brief Retrieve the character representation (a pair of chars).
+    constexpr std::pair<char, char> to_chars() const noexcept
+    {
+        return std::make_pair(seqan3::to_char(get<0>(*this)), seqan3::to_char(get<1>(*this)));
     }
 };
 
