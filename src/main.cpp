@@ -74,8 +74,13 @@ int main(int argc, char ** argv)
                 {
                     seqan3::debug_stream << "Stem ";
                 }
-                seqan3::debug_stream << element.profile << "\n";
+                seqan3::debug_stream << element.profile << "\nGaps: ";
 
+                for (auto const & map : element.gaps)
+                {
+                        seqan3::debug_stream << map << "\t";
+                }
+                seqan3::debug_stream << "\n";
             }, el);
         }
     }

@@ -58,8 +58,6 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
 {
     stem_loop_motif motif{};
     motif.bounds = pos;
-    auto ali = msa.sequences | seqan3::views::deep{seqan3::views::slice}(pos.first, pos.second + 1);
-    auto pairs = bpseq | seqan3::views::slice(pos.first, pos.second + 1);
     int left = pos.first;
     int right = pos.second;
 
@@ -67,59 +65,134 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
     {
         if (bpseq[left] == right) // stem
         {
+            std::vector<int> gap_stat(msa.sequences.size(), -1);
             stem_element & stem = motif.new_stem();
+            uint16_t col = 0u;
             do
             {
                 assert(bpseq[right] == left);
-                seqan3::debug_stream << "add to stack: " << left << " & " << right;
-                profile_char<mars::bi_alphabet<seqan3::rna4>> p{};
-                for (auto const & seq : msa.sequences)
+                stem.gaps.push_back({});
+                profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
+                for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
                 {
-                    bool is_gap = p.increment(seq[left], seq[right]);
+                    bool is_gap = prof.increment(seq[left], seq[right]);
+                    if (is_gap && current_gap == -1)
+                    {
+                        current_gap = col;
+                    }
+                    else if (!is_gap && current_gap > -1)
+                    {
+                        auto [iter, succ] = stem.gaps[current_gap].emplace(col-current_gap, 1);
+                        if (!succ)
+                            ++(iter->second);
+                        current_gap = -1;
+                    }
                 }
-                seqan3::debug_stream << "\t profile " << p << std::endl;
-                stem.profile.push_back(p);
+                seqan3::debug_stream << "add to stack: " << left << " & " << right;
+                seqan3::debug_stream << "\t profile " << prof << std::endl;
+                stem.profile.push_back(prof);
+                ++col;
                 ++left;
                 --right;
             }
             while (bpseq[left] == right);
+
+            for (int current_gap : gap_stat)
+            {
+                if (current_gap > -1)
+                {
+                    auto[iter, succ] = stem.gaps[current_gap].emplace(col - current_gap, 1);
+                    if (!succ)
+                        ++(iter->second);
+                }
+            }
         }
 
         if (bpseq[left] < pos.first || bpseq[left] > pos.second) // 5' loop
         {
+            std::vector<int> gap_stat(msa.sequences.size(), -1);
             loop_element & loop = motif.new_loop();
             loop.is_5prime = true;
+            uint16_t col = 0u;
             do
             {
-                seqan3::debug_stream << "left loop: " << left;
-                profile_char<seqan3::rna4> p{};
-                for (auto const & seq : msa.sequences)
+                loop.gaps.push_back({});
+                profile_char<seqan3::rna4> prof{};
+                for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
                 {
-                    bool is_gap = p.increment(seq[left]);
+                    bool is_gap = prof.increment(seq[left]);
+                    if (is_gap && current_gap == -1)
+                    {
+                        current_gap = col;
+                    }
+                    else if (!is_gap && current_gap > -1)
+                    {
+                        auto [iter, succ] = loop.gaps[current_gap].emplace(col-current_gap, 1);
+                        if (!succ)
+                            ++(iter->second);
+                        current_gap = -1;
+                    }
                 }
-                seqan3::debug_stream << "\t profile " << p << std::endl;
-                loop.profile.push_back(p);
+                seqan3::debug_stream << "left loop: " << left;
+                seqan3::debug_stream << "\t profile " << prof << std::endl;
+                loop.profile.push_back(prof);
                 ++left;
+                ++col;
             }
             while (bpseq[left] < pos.first || bpseq[left] > pos.second);
+
+            for (int current_gap : gap_stat)
+            {
+                if (current_gap > -1)
+                {
+                    auto[iter, succ] = loop.gaps[current_gap].emplace(col - current_gap, 1);
+                    if (!succ)
+                        ++(iter->second);
+                }
+            }
         }
         else if (bpseq[right] < pos.first || bpseq[right] > pos.second) // 3' loop
         {
+            std::vector<int> gap_stat(msa.sequences.size(), -1);
             loop_element & loop = motif.new_loop();
             loop.is_5prime = false;
+            uint16_t col = 0u;
             do
             {
-                seqan3::debug_stream << "right loop: " << right;
-                profile_char<seqan3::rna4> p{};
-                for (auto const & seq : msa.sequences)
+                loop.gaps.push_back({});
+                profile_char<seqan3::rna4> prof{};
+                for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
                 {
-                    bool is_gap = p.increment(seq[right]);
+                    bool is_gap = prof.increment(seq[right]);
+                    if (is_gap && current_gap == -1)
+                    {
+                        current_gap = col;
+                    }
+                    else if (!is_gap && current_gap > -1)
+                    {
+                        auto [iter, succ] = loop.gaps[current_gap].emplace(col-current_gap, 1);
+                        if (!succ)
+                            ++(iter->second);
+                        current_gap = -1;
+                    }
                 }
-                seqan3::debug_stream << "\t profile " << p << std::endl;
-                loop.profile.push_back(p);
+                seqan3::debug_stream << "right loop: " << right;
+                seqan3::debug_stream << "\t profile " << prof << std::endl;
+                loop.profile.push_back(prof);
                 --right;
+                ++col;
             }
             while (bpseq[right] < pos.first || bpseq[right] > pos.second);
+
+            for (int current_gap : gap_stat)
+            {
+                if (current_gap > -1)
+                {
+                    auto[iter, succ] = loop.gaps[current_gap].emplace(col - current_gap, 1);
+                    if (!succ)
+                        ++(iter->second);
+                }
+            }
         }
         else
         {

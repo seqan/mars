@@ -1,12 +1,19 @@
 #include <gtest/gtest.h>
 
+#include <seqan3/std/iterator>
+//#include <seqan3/std/ranges>
+//#include <string_view>
 #include <vector>
 
+#include <seqan3/alphabet/gap/gapped.hpp>
+#include <seqan3/alphabet/nucleotide/rna15.hpp>
+#include <seqan3/range/views/char_to.hpp>
 #include <seqan3/test/expect_range_eq.hpp>
 
 #include "motif.hpp"
+#include "multiple_alignment.hpp"
 
-TEST(Stemloop, Detection)
+TEST(Motif, Detection)
 {
     std::vector<int> bpseq{76,75,74,73,72,71,70,-1,-1,-1,
                            -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -29,4 +36,66 @@ TEST(Stemloop, Detection)
 
     mars::stemloop_type expected {{27,47}, {54,68}};
     EXPECT_RANGE_EQ(stemloops, expected);
+}
+
+TEST(Motif, AnalyzeStemLoop)
+{
+    std::vector<int> bpseq{76,75,74,73,72,71,70,-1,-1,-1,
+                           -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+                           -1,-1,-1,-1,-1,-1,-1,47,46,45,
+                           44,43,-1,-1,-1,-1,-1,-1,-1,-1,
+                           -1,-1,-1,31,30,29,28,27,-1,-1,
+                           -1,-1,-1,-1,68,67,66,65,-1,-1,
+                           -1,-1,-1,-1,-1,57,56,55,54,-1,
+                           6, 5, 4, 3, 2, 1, 0,-1};
+
+    mars::msa_type msa{};
+    msa.sequences.resize(5);
+    using std::ranges::copy;
+    copy(std::string_view{"gcuuuaaaagc-uuu---gcugaagcaacggcc----uuguaagucguagaa-aacu--a-ua---cguuuuaaagcu"}
+         | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[0]));
+    copy(std::string_view{"acuuuuaaagg-aua-acagccauccguugguc----uuaggccccaaaaau-uuuggugcaacuccaaauaaaagua"}
+         | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[1]));
+    copy(std::string_view{"gcgguuguggcgaag-ugguuaacgcaccagauuguggcucuggcacuc----guggguucgauucccaucaaucgcc"}
+         | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[2]));
+    copy(std::string_view{"gcucauguagc-ucaguugguagagcacacccu----ugguaagggugaggucagcgguucaaauccgcucaugagcu"}
+         | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[3]));
+    copy(std::string_view{"guuucuguagu-ugaau---uacaacgaugauu----uuucaugucauuggu-cgcaguugaaugcuguguagaaaua"}
+         | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[4]));
+
+    auto motif = mars::analyze_stem_loop(msa, bpseq, {27,47});
+    EXPECT_EQ(motif.bounds, std::make_pair(27u, 47u));
+    //TODO length
+    EXPECT_EQ(motif.elements.size(), 2);
+
+    // check the stem
+    EXPECT_TRUE(std::holds_alternative<mars::stem_element>(motif.elements[0]));
+    mars::stem_element const & stem = std::get<mars::stem_element>(motif.elements[0]);
+    //TODO length
+    EXPECT_EQ(stem.profile.size(), 5);
+    EXPECT_RANGE_EQ(stem.profile[0].quantities(), (std::array<float, 16>{0,0,0,2,0,0,1,1,0,0,0,0,1,0,0,0}));
+    EXPECT_RANGE_EQ(stem.profile[1].quantities(), (std::array<float, 16>{0,0,0,1,0,1,1,0,0,0,0,0,2,0,0,0}));
+    EXPECT_EQ(stem.gaps.size(), 5);
+    for (auto const & map : stem.gaps)
+    {
+        EXPECT_TRUE(map.empty());
+    }
+
+    // check the loop
+    EXPECT_TRUE(std::holds_alternative<mars::loop_element>(motif.elements[1]));
+    mars::loop_element loop = std::get<mars::loop_element>(motif.elements[1]);
+    EXPECT_TRUE(loop.is_5prime);
+    //TODO length
+    EXPECT_EQ(loop.profile.size(), 11);
+    EXPECT_RANGE_EQ(loop.profile[0].quantities(), (std::array<float, 4>{0,2,0,3}));
+    EXPECT_RANGE_EQ(loop.profile[1].quantities(), (std::array<float, 4>{0,0,0,1}));
+    EXPECT_EQ(loop.gaps.size(), 11);
+    for (int idx : {0, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+    {
+        EXPECT_TRUE(loop.gaps[idx].empty());
+    }
+    EXPECT_EQ(loop.gaps[1].size(), 1);
+    auto const & gap_entry = loop.gaps[1].begin();
+    EXPECT_EQ(gap_entry->first, 4);
+    EXPECT_EQ(gap_entry->second, 4);
 }
