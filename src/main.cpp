@@ -85,5 +85,10 @@ int main(int argc, char ** argv)
         }
     }
 
+    if (!genome_file.empty())
+    {
+        mars::read_genome(genome_file);
+    }
+
     return 0;
 }
