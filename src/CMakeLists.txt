@@ -15,6 +15,11 @@ add_library (motif STATIC motif.cpp)
 target_link_libraries (motif PUBLIC seqan3::seqan3)
 target_include_directories (motif PUBLIC ../include)
 
+# index and search
+add_library (index STATIC index.cpp)
+target_link_libraries (index PUBLIC seqan3::seqan3)
+target_include_directories (index PUBLIC ../include)
+
 # The mars executable consists of main.cpp and the linked object library.
 add_executable ("${PROJECT_NAME}" main.cpp)
-target_link_libraries ("${PROJECT_NAME}" PUBLIC motif io structure)
+target_link_libraries ("${PROJECT_NAME}" PUBLIC motif io structure index)

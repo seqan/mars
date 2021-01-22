@@ -58,9 +58,46 @@ struct stem_loop_motif
     }
 };
 
+/*!
+ * \brief Stream a representation of a stem loop motif.
+ * \tparam ostream_type The type of the output stream.
+ * \param os The output stream.
+ * \param motif The motif to be printed.
+ * \return The stream with the motif representation appended.
+ */
+template <typename ostream_type>
+inline ostream_type & operator<<(ostream_type & os, stem_loop_motif const & motif)
+{
+    for (auto const & el : motif.elements)
+    {
+        std::visit([&os] (auto element)
+        {
+            if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
+               os << "Loop " << (element.is_5prime ? "5' " : "3' ");
+            else
+               os << "Stem ";
+
+            for (auto const & profile_char : element.profile)
+                os << profile_char << ' ';
+            os << "\nGaps: ";
+            for (int idx = 0; idx < element.gaps.size(); ++idx)
+                if (!element.gaps[idx].empty())
+                {
+                    os << "\t" << idx << ": ";
+                    for (auto && [key, val] : element.gaps[idx])
+                        os << "(" << key << "," << val << ")";
+                }
+            os << "\n";
+        }, el);
+    }
+    return os;
+}
+
 using stemloop_type = std::vector<std::pair<int, int>>;
 stemloop_type detect_stem_loops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
 
-stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & bpseq, std::pair<int, int> const & pos);
+stem_loop_motif analyze_stem_loop(msa_type const & msa,
+                                  std::vector<int> const & bpseq,
+                                  std::pair<int, int> const & pos);
 
 } // namespace mars

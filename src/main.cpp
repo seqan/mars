@@ -1,9 +1,12 @@
 #include <seqan3/std/filesystem>
 
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/rna15.hpp>
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/search/search.hpp>
 
+#include "index.hpp"
 #include "input_output.hpp"
 #include "motif.hpp"
 #include "structure.hpp"
@@ -61,33 +64,14 @@ int main(int argc, char ** argv)
     }
 
     for (auto & motif : motifs)
-    {
-        for (auto const & el : motif.elements)
-        {
-            std::visit([] (auto element)
-            {
-                if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
-                {
-                    seqan3::debug_stream << "Loop " << (element.is_5prime ? "5' " : "3' ");
-                }
-                else
-                {
-                    seqan3::debug_stream << "Stem ";
-                }
-                seqan3::debug_stream << element.profile << "\nGaps: ";
-
-                for (auto const & map : element.gaps)
-                {
-                        seqan3::debug_stream << map << "\t";
-                }
-                seqan3::debug_stream << "\n";
-            }, el);
-        }
-    }
+        std::cerr << motif;
 
     if (!genome_file.empty())
     {
-        mars::read_genome(genome_file);
+        using seqan3::operator""_dna4;
+        mars::index_type index = mars::create_index(genome_file);
+        auto res = seqan3::search("ATA"_dna4, index);
+        seqan3::debug_stream << res << std::endl;
     }
 
     return 0;

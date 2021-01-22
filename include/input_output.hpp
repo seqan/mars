@@ -2,9 +2,10 @@
 
 #include <seqan3/std/filesystem>
 #include <istream>
+#include <vector>
 
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/rna5.hpp>
-#include <seqan3/search/fm_index/bi_fm_index.hpp>
 
 #include "multiple_alignment.hpp"
 
@@ -25,8 +26,11 @@ msa_type read_msa(std::istream & stream);
  */
 msa_type read_msa(std::filesystem::path const & filepath);
 
-using index_type = seqan3::bi_fm_index<seqan3::rna5, seqan3::text_layout::collection>;
-
-index_type read_genome(std::filesystem::path const & filepath);
+/*!
+ * \brief Read a FASTA file of sequences.
+ * \param filepath The file path where the sequences can be read from.
+ * \return A vector of DNA sequences.
+ */
+std::vector<seqan3::dna4_vector> read_genome(std::filesystem::path const & filepath);
 
 } // namespace mars
