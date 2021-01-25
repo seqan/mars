@@ -1,10 +1,7 @@
 #include <seqan3/std/filesystem>
 
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/alphabet/nucleotide/rna15.hpp>
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
-#include <seqan3/search/search.hpp>
 
 #include "index.hpp"
 #include "input_output.hpp"
@@ -68,10 +65,9 @@ int main(int argc, char ** argv)
 
     if (!genome_file.empty())
     {
-        using seqan3::operator""_dna4;
         mars::index_type index = mars::create_index(genome_file);
-        auto res = seqan3::search("ATA"_dna4, index);
-        seqan3::debug_stream << res << std::endl;
+        mars::bi_directional_search bds(index);
+        //TODO: Generate sequences from motif and search them.
     }
 
     return 0;

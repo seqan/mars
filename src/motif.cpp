@@ -1,6 +1,5 @@
 #include <seqan3/std/ranges>
 
-#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/views/deep.hpp>
 #include <seqan3/range/views/slice.hpp>
 #include <seqan3/range/views/zip.hpp>
@@ -71,7 +70,7 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
             do
             {
                 assert(bpseq[right] == left);
-                stem.gaps.push_back({});
+                stem.gaps.emplace_back();
                 profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
                 for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
                 {
@@ -88,8 +87,6 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
                         current_gap = -1;
                     }
                 }
-                seqan3::debug_stream << "add to stack: " << left << " & " << right;
-                seqan3::debug_stream << "\t profile " << prof << std::endl;
                 stem.profile.push_back(prof);
                 ++col;
                 ++left;
@@ -116,7 +113,7 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
             uint16_t col = 0u;
             do
             {
-                loop.gaps.push_back({});
+                loop.gaps.emplace_back();
                 profile_char<seqan3::rna4> prof{};
                 for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
                 {
@@ -133,8 +130,6 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
                         current_gap = -1;
                     }
                 }
-                seqan3::debug_stream << "left loop: " << left;
-                seqan3::debug_stream << "\t profile " << prof << std::endl;
                 loop.profile.push_back(prof);
                 ++left;
                 ++col;
@@ -159,7 +154,7 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
             uint16_t col = 0u;
             do
             {
-                loop.gaps.push_back({});
+                loop.gaps.emplace_back();
                 profile_char<seqan3::rna4> prof{};
                 for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
                 {
@@ -176,8 +171,6 @@ stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const &
                         current_gap = -1;
                     }
                 }
-                seqan3::debug_stream << "right loop: " << right;
-                seqan3::debug_stream << "\t profile " << prof << std::endl;
                 loop.profile.push_back(prof);
                 --right;
                 ++col;
