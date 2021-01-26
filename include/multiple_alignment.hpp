@@ -21,7 +21,10 @@ struct multiple_alignment
     std::vector<std::string> names;
 };
 
-//!\brief The multiple alignment type used in MaRs.
-using msa_type = multiple_alignment<seqan3::rna15>;
+/*!
+ * \brief The multiple alignment type used in MaRs.
+ * \relates multiple_alignment
+ */
+typedef multiple_alignment<seqan3::rna15> msa_type;
 
 } // namespace mars

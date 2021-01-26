@@ -11,23 +11,24 @@
 namespace mars
 {
 
-/*!\brief Stores the frequency of characters at a specific position.
+/*!
+ * \brief Stores the frequency of characters at a specific position.
  * \tparam alph_type The legal alphabet for the profile entries.
  */
 template <seqan3::semialphabet alph_type>
 class profile_char
 {
 private:
-    //!\brief The number of profile entries, i.e. the size of the underlying alphabet.
+    //! \brief The number of profile entries, i.e. the size of the underlying alphabet.
     static constexpr size_t const size{seqan3::alphabet_size<alph_type>};
 
-    //!\brief The internal representation of a single count.
+    //! \brief The internal representation of a single count.
     static constexpr uint32_t const one{600};
 
-    //!\brief The number of occurrences of each character.
+    //! \brief The number of occurrences of each character.
     std::array<uint32_t, size> tally{};
 
-    //!\brief Convert wildcard characters into their components.
+    //! \brief Convert wildcard characters into their components.
     static std::string compose(char chr)
     {
         switch (chr)
@@ -61,7 +62,8 @@ private:
     }
 
 public:
-    /*!\name Constructors, destructor and assignment
+    /*!
+     * \name Constructors, destructor and assignment
      * \{
      */
     constexpr profile_char()                                 noexcept = default; //!< Defaulted.
@@ -71,7 +73,8 @@ public:
     constexpr profile_char & operator=(profile_char &&)      noexcept = default; //!< Defaulted.
     ~profile_char()                                          noexcept = default; //!< Defaulted.
 
-    /*!\brief Increase the character count by 1.
+    /*!
+     * \brief Increase the character count by 1.
      * \param rnk The rank of the character of which the count is incremented.
      */
     void increment(seqan3::alphabet_rank_t<alph_type> rnk)
@@ -80,7 +83,8 @@ public:
         tally[rnk] += one;
     }
 
-    /*!\brief Increase the character count by 1.
+    /*!
+     * \brief Increase the character count by 1.
      * \param chr The character of which the count is incremented.
      */
     void increment(alph_type chr)
@@ -88,7 +92,8 @@ public:
         tally[chr.to_rank()] += one;
     }
 
-    /*!\brief Increase the character count by 1.
+    /*!
+     * \brief Increase the character count by 1.
      * \tparam ext_alph_type A compatible nucleotide alphabet type that may be smaller than `alph_type`.
      * \param chr The character of which the count is incremented.
      */
@@ -102,7 +107,8 @@ public:
         increment(alph_type{chr}); // DNA-RNA conversion or convert into a larger alphabet
     }
 
-    /*!\brief Increase the character count (by 1 in total).
+    /*!
+     * \brief Increase the character count (by 1 in total).
      * \tparam ext_alph_type The extended alphabet type that may contain wildcards; must be a nucleotide alphabet.
      * \param chr The character of which the count is incremented.
      *
@@ -122,7 +128,8 @@ public:
             tally[alph_type{}.assign_char(x).to_rank()] += one/composition.size();
     }
 
-    /*!\brief Increase the character count (by 1 in total) for bi-alphabets.
+    /*!
+     * \brief Increase the character count (by 1 in total) for bi-alphabets.
      * \tparam ext_alph_type The extended alphabet type that may contain wildcards; must be a nucleotide alphabet.
      * \param chr1 The first character of the bi-character.
      * \param chr2 The second character of the bi-character.
@@ -145,7 +152,8 @@ public:
                 tally[alph_type{}.assign_chars(x1, x2).to_rank()] += one/len;
     }
 
-    /*!\brief This is an overload for bi-alphabets with gaps. Increase the character count by 1 unless it has a gap.
+    /*!
+     * \brief This is an overload for bi-alphabets with gaps. Increase the character count by 1 unless it has a gap.
      * \tparam inner_alph_type The underlying alphabet type without the gap; must be a writable alphabet.
      * \param chr1 The first (gapped) character of the bi-character.
      * \param chr2 The second (gapped) character of the bi-character.
@@ -161,7 +169,8 @@ public:
         return false;
     }
 
-    /*!\brief This is an overload for gapped alphabets. Increase the character count by 1 unless it is a gap.
+    /*!
+     * \brief This is an overload for gapped alphabets. Increase the character count by 1 unless it is a gap.
      * \tparam inner_alph_type The underlying alphabet type without the gap; must be a writable alphabet.
      * \param chr The character of which the count is incremented.
      * \returns True, if `chr` is a gap character, false otherwise.
@@ -176,7 +185,8 @@ public:
         return false;
     }
 
-    /*!\brief Retrieve the quantity of a character.
+    /*!
+     * \brief Retrieve the quantity of a character.
      * \param chr The character of interest.
      * \return The quantity of the character in the profile.
      *
@@ -188,7 +198,8 @@ public:
         return 1.f * tally[chr.to_rank()] / one;
     }
 
-    /*!\brief Retrieve the quantity of a character.
+    /*!
+     * \brief Retrieve the quantity of a character.
      * \param rank The rank of the character of interest.
      * \return The quantity of the character in the profile.
      *
@@ -201,7 +212,8 @@ public:
         return 1.f * tally[rank] / one;
     }
 
-    /*!\brief Retrieve the whole character profile.
+    /*!
+     * \brief Retrieve the whole character profile.
      * \return An array that contains the quantities of the profile characters in alphabetical order.
      *
      * \note
@@ -215,12 +227,14 @@ public:
     }
 };
 
-/*!\brief Stream a representation of a character profile.
+/*!
+ * \brief Stream a representation of a character profile.
  * \tparam alph_type The alphabet type of the profile.
  * \tparam ostream_type The stream type.
  * \param os The stream where the representation is appended.
  * \param chr The character profile that should be printed.
  * \return The output stream.
+ * \relates profile_char
  */
 template <seqan3::semialphabet alph_type, typename ostream_type>
 inline ostream_type & operator<<(ostream_type & os, profile_char<alph_type> const & chr)

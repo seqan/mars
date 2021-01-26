@@ -1,13 +1,9 @@
 #include <seqan3/std/algorithm>
 #include <seqan3/std/iterator>
-#include <list>
-#include <string>
 
-#include <seqan3/alphabet/nucleotide/rna15.hpp>
 #include <seqan3/range/views/to_char.hpp>
 #include <seqan3/range/views/zip.hpp>
 
-#include "multiple_alignment.hpp"
 #include "structure.hpp"
 
 namespace mars

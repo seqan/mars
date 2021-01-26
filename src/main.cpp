@@ -1,4 +1,5 @@
 #include <seqan3/std/filesystem>
+#include <vector>
 
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
@@ -51,11 +52,11 @@ int main(int argc, char ** argv)
     auto && [bpseq, plevel] = mars::compute_structure(msa);
 
     // Find the stem loops
-    mars::stemloop_type stemloops = mars::detect_stem_loops(bpseq, plevel);
+    std::vector<mars::stemloop_type> stemloops = mars::detect_stem_loops(bpseq, plevel);
     seqan3::debug_stream << stemloops << "\n";
 
-    std::vector<mars::stem_loop_motif> motifs{};
-    for (std::pair<int, int> const & pos : stemloops)
+    std::vector<mars::stemloop_motif> motifs{};
+    for (mars::stemloop_type const & pos : stemloops)
     {
         motifs.push_back(mars::analyze_stem_loop(msa, bpseq, pos));
     }

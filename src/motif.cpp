@@ -4,22 +4,35 @@
 #include <seqan3/range/views/slice.hpp>
 #include <seqan3/range/views/zip.hpp>
 
-#include "bi_alphabet.hpp"
 #include "motif.hpp"
 
 namespace mars
 {
 
-stemloop_type detect_stem_loops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
+stem_element & stemloop_motif::new_stem()
+{
+    elements.emplace_back<stem_element>({});
+    return std::get<stem_element>(elements.back());
+}
+
+loop_element & stemloop_motif::new_loop(bool is_5prime)
+{
+    elements.emplace_back<loop_element>({});
+    auto & elem = std::get<loop_element>(elements.back());
+    elem.is_5prime = is_5prime;
+    return elem;
+}
+
+std::vector<stemloop_type> detect_stem_loops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
 {
     struct pk_info
     {
         int level;
         bool closing;
-        std::pair<int, int> previous;
+        stemloop_type previous;
     };
     std::vector<pk_info> pk_infos{};
-    stemloop_type stemloops;
+    std::vector<stemloop_type> stemloops;
 
     // 0-based indices
     for (auto &&[idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
@@ -53,147 +66,113 @@ stemloop_type detect_stem_loops(std::vector<int> const & bpseq, std::vector<int>
     return std::move(stemloops);
 }
 
-stem_loop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & bpseq, std::pair<int, int> const & pos)
+// private helper function for analyze_stem_loop
+void check_gaps(int & current_gap, std::unordered_map<uint16_t, uint16_t> & gaps, int col, bool is_gap)
 {
-    stem_loop_motif motif{};
+    if (is_gap && current_gap == -1)
+    {
+        current_gap = col;
+    }
+    else if (!is_gap && current_gap > -1)
+    {
+        auto[iter, succ] = gaps.emplace(col - current_gap, 1);
+        if (!succ)
+            ++(iter->second);
+        current_gap = -1;
+    }
+};
+
+stemloop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & bpseq, stemloop_type const & pos)
+{
+    stemloop_motif motif{};
     motif.bounds = pos;
+
+    auto make_stem = [&msa, &bpseq, &motif] (int & left, int & right)
+    {
+        stem_element & elem = motif.new_stem();
+        std::vector<int> gap_stat(msa.sequences.size(), -1);
+        do
+        {
+            assert(bpseq[right] == left);
+            elem.gaps.emplace_back();
+            profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
+            for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
+            {
+                bool is_gap = prof.increment(seq[left], seq[right]);
+                check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), is_gap);
+            }
+            elem.profile.push_back(prof);
+            ++left;
+            --right;
+        }
+        while (bpseq[left] == right);
+
+        for (int current_gap : gap_stat)
+            check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
+    };
+
+    auto make_loop = [&msa, &bpseq, &pos, &motif] (int & bpidx, bool is_5prime)
+    {
+        loop_element & elem = motif.new_loop(is_5prime);
+        std::vector<int> gap_stat(msa.sequences.size(), -1);
+        do
+        {
+            elem.gaps.emplace_back();
+            profile_char<seqan3::rna4> prof{};
+            for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
+            {
+                bool is_gap = prof.increment(seq[bpidx]);
+                check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), is_gap);
+            }
+            elem.profile.push_back(prof);
+            bpidx += (elem.is_5prime ? 1 : -1);
+        }
+        while (bpseq[bpidx] < pos.first || bpseq[bpidx] > pos.second);
+
+        for (int current_gap : gap_stat)
+            check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
+    };
+
     int left = pos.first;
     int right = pos.second;
-
     while (left <= right)
     {
         if (bpseq[left] == right) // stem
-        {
-            std::vector<int> gap_stat(msa.sequences.size(), -1);
-            stem_element & stem = motif.new_stem();
-            uint16_t col = 0u;
-            do
-            {
-                assert(bpseq[right] == left);
-                stem.gaps.emplace_back();
-                profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
-                for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
-                {
-                    bool is_gap = prof.increment(seq[left], seq[right]);
-                    if (is_gap && current_gap == -1)
-                    {
-                        current_gap = col;
-                    }
-                    else if (!is_gap && current_gap > -1)
-                    {
-                        auto [iter, succ] = stem.gaps[current_gap].emplace(col-current_gap, 1);
-                        if (!succ)
-                            ++(iter->second);
-                        current_gap = -1;
-                    }
-                }
-                stem.profile.push_back(prof);
-                ++col;
-                ++left;
-                --right;
-            }
-            while (bpseq[left] == right);
-
-            for (int current_gap : gap_stat)
-            {
-                if (current_gap > -1)
-                {
-                    auto[iter, succ] = stem.gaps[current_gap].emplace(col - current_gap, 1);
-                    if (!succ)
-                        ++(iter->second);
-                }
-            }
-        }
+            make_stem(left, right);
 
         if (bpseq[left] < pos.first || bpseq[left] > pos.second) // 5' loop
-        {
-            std::vector<int> gap_stat(msa.sequences.size(), -1);
-            loop_element & loop = motif.new_loop();
-            loop.is_5prime = true;
-            uint16_t col = 0u;
-            do
-            {
-                loop.gaps.emplace_back();
-                profile_char<seqan3::rna4> prof{};
-                for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
-                {
-                    bool is_gap = prof.increment(seq[left]);
-                    if (is_gap && current_gap == -1)
-                    {
-                        current_gap = col;
-                    }
-                    else if (!is_gap && current_gap > -1)
-                    {
-                        auto [iter, succ] = loop.gaps[current_gap].emplace(col-current_gap, 1);
-                        if (!succ)
-                            ++(iter->second);
-                        current_gap = -1;
-                    }
-                }
-                loop.profile.push_back(prof);
-                ++left;
-                ++col;
-            }
-            while (bpseq[left] < pos.first || bpseq[left] > pos.second);
-
-            for (int current_gap : gap_stat)
-            {
-                if (current_gap > -1)
-                {
-                    auto[iter, succ] = loop.gaps[current_gap].emplace(col - current_gap, 1);
-                    if (!succ)
-                        ++(iter->second);
-                }
-            }
-        }
+            make_loop(left, true);
         else if (bpseq[right] < pos.first || bpseq[right] > pos.second) // 3' loop
-        {
-            std::vector<int> gap_stat(msa.sequences.size(), -1);
-            loop_element & loop = motif.new_loop();
-            loop.is_5prime = false;
-            uint16_t col = 0u;
-            do
-            {
-                loop.gaps.emplace_back();
-                profile_char<seqan3::rna4> prof{};
-                for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
-                {
-                    bool is_gap = prof.increment(seq[right]);
-                    if (is_gap && current_gap == -1)
-                    {
-                        current_gap = col;
-                    }
-                    else if (!is_gap && current_gap > -1)
-                    {
-                        auto [iter, succ] = loop.gaps[current_gap].emplace(col-current_gap, 1);
-                        if (!succ)
-                            ++(iter->second);
-                        current_gap = -1;
-                    }
-                }
-                loop.profile.push_back(prof);
-                --right;
-                ++col;
-            }
-            while (bpseq[right] < pos.first || bpseq[right] > pos.second);
-
-            for (int current_gap : gap_stat)
-            {
-                if (current_gap > -1)
-                {
-                    auto[iter, succ] = loop.gaps[current_gap].emplace(col - current_gap, 1);
-                    if (!succ)
-                        ++(iter->second);
-                }
-            }
-        }
-        else
-        {
-            assert(false);
-        }
+            make_loop(right, false);
     }
-
     return std::move(motif);
+}
+
+std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif)
+{
+    for (auto const & el : motif.elements)
+    {
+        std::visit([&os] (auto element)
+                   {
+                       if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
+                           os << "Loop " << (element.is_5prime ? "5' " : "3' ");
+                       else
+                           os << "Stem ";
+
+                       for (auto const & profile_char : element.profile)
+                           os << profile_char << ' ';
+                       os << "\nGaps: ";
+                       for (int idx = 0; idx < element.gaps.size(); ++idx)
+                           if (!element.gaps[idx].empty())
+                           {
+                               os << "\t" << idx << ": ";
+                               for (auto && [key, val] : element.gaps[idx])
+                                   os << "(" << key << "," << val << ")";
+                           }
+                       os << "\n";
+                   }, el);
+    }
+    return os;
 }
 
 } // namespace mars

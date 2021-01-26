@@ -32,9 +32,9 @@ TEST(Motif, Detection)
                             -1,-1,-1,-1,-1, 0, 0, 0, 0,-1,
                              0, 0, 0, 0, 0, 0, 0,-1};
 
-    mars::stemloop_type stemloops = mars::detect_stem_loops(bpseq, plevel);
+    std::vector<mars::stemloop_type> stemloops = mars::detect_stem_loops(bpseq, plevel);
 
-    mars::stemloop_type expected {{27,47}, {54,68}};
+    std::vector<mars::stemloop_type> expected {{27,47}, {54,68}};
     EXPECT_RANGE_EQ(stemloops, expected);
 }
 
@@ -64,7 +64,7 @@ TEST(Motif, AnalyzeStemLoop)
          | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[4]));
 
     auto motif = mars::analyze_stem_loop(msa, bpseq, {27,47});
-    EXPECT_EQ(motif.bounds, std::make_pair(27u, 47u));
+    EXPECT_EQ(motif.bounds, std::make_pair(27ul, 47ul));
     //TODO length
     EXPECT_EQ(motif.elements.size(), 2);
 

@@ -5,10 +5,11 @@
 namespace mars
 {
 
-//!\brief Only seqan3::get works with bi_alphabet.
+//! \brief Only seqan3::get works with bi_alphabet.
 using seqan3::get;
 
-/*!\brief A seqan3::alphabet_tuple_base that joins an alphabet with itself to represent a double character.
+/*!
+ * \brief A seqan3::alphabet_tuple_base that joins an alphabet with itself to represent a double character.
  * \tparam alphabet_t Type of the underlying alphabet; must model seqan3::writable_semialphabet.
  *
  * \details
@@ -18,14 +19,15 @@ template <seqan3::writable_semialphabet alphabet_t>
 class bi_alphabet : public seqan3::alphabet_tuple_base<bi_alphabet<alphabet_t>, alphabet_t, alphabet_t>
 {
 private:
-    //!\brief The base type.
+    //! \brief The base type.
     using base_type = seqan3::alphabet_tuple_base<bi_alphabet<alphabet_t>, alphabet_t, alphabet_t>;
 
 public:
-    //!\brief The template parameter as member type.
+    //! \brief The template parameter as member type.
     using alphabet_type = alphabet_t;
 
-    /*!\name Constructors, destructor and assignment
+    /*!
+     * \name Constructors, destructor and assignment
      * \{
      */
     constexpr bi_alphabet()                                 noexcept = default; //!< Defaulted.
@@ -47,7 +49,7 @@ public:
         return seqan3::char_is_valid_for<alphabet_type>(c);
     }
 
-    //!\brief Assign from a character pair. This modifies the internal sequence letter.
+    //! \brief Assign from a character pair. This modifies the internal sequence letter.
     constexpr bi_alphabet & assign_chars(char c1, char c2) noexcept
     {
         seqan3::assign_char_to(c1, get<0>(*this));
@@ -55,15 +57,17 @@ public:
         return *this;
     }
 
-    //!\brief Retrieve the character representation (a pair of chars).
+    //! \brief Retrieve the character representation (a pair of chars).
     constexpr std::pair<char, char> to_chars() const noexcept
     {
         return std::make_pair(seqan3::to_char(get<0>(*this)), seqan3::to_char(get<1>(*this)));
     }
 };
 
-//!\brief Type deduction guide enables usage of bi_alphabet without specifying template args.
-//!\relates bi_alphabet
+/*!
+ * \brief Type deduction guide enables usage of bi_alphabet without specifying template args.
+ * \relates bi_alphabet
+ */
 template <seqan3::writable_semialphabet alphabet_type>
 bi_alphabet(alphabet_type &&, alphabet_type &&) -> bi_alphabet<std::decay_t<alphabet_type>>;
 
