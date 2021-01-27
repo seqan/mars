@@ -16,7 +16,12 @@ namespace mars
 {
 
 //! \brief Store {min, mean, max} of a distribution.
-typedef std::tuple<uint16_t, float, uint16_t> stat_type;
+struct stat_type
+{
+    size_t min;
+    size_t max;
+    float mean;
+};
 
 //! \brief The boundaries of a stemloop.
 typedef std::pair<size_t, size_t> stemloop_type;

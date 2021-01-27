@@ -1,4 +1,5 @@
 #include <seqan3/std/ranges>
+#include <valarray>
 
 #include <seqan3/range/views/deep.hpp>
 #include <seqan3/range/views/slice.hpp>
@@ -86,19 +87,25 @@ stemloop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & 
 {
     stemloop_motif motif{};
     motif.bounds = pos;
+    std::valarray<size_t> motif_len_stat(0ul, msa.sequences.size());
 
-    auto make_stem = [&msa, &bpseq, &motif] (int & left, int & right)
+    auto make_stem = [&msa, &bpseq, &motif, &motif_len_stat] (int & left, int & right)
     {
         stem_element & elem = motif.new_stem();
         std::vector<int> gap_stat(msa.sequences.size(), -1);
+        std::valarray<size_t> len_stat(0ul, msa.sequences.size());
         do
         {
             assert(bpseq[right] == left);
             elem.gaps.emplace_back();
             profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
-            for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
+            for (auto &&[current_gap, len, seq] : seqan3::views::zip(gap_stat, len_stat, msa.sequences))
             {
                 bool is_gap = prof.increment(seq[left], seq[right]);
+                if (seq[left] != seqan3::gap())
+                    ++len;
+                if (seq[right] != seqan3::gap())
+                    ++len;
                 check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), is_gap);
             }
             elem.profile.push_back(prof);
@@ -109,69 +116,83 @@ stemloop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & 
 
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
+
+        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() * 1.f / msa.sequences.size()};
+        motif_len_stat += len_stat;
     };
 
-    auto make_loop = [&msa, &bpseq, &pos, &motif] (int & bpidx, bool is_5prime)
+    auto make_loop = [&msa, &bpseq, &motif, &motif_len_stat] (int & bpidx, bool is_5prime)
     {
         loop_element & elem = motif.new_loop(is_5prime);
         std::vector<int> gap_stat(msa.sequences.size(), -1);
+        std::valarray<size_t> len_stat(0ul, msa.sequences.size());
         do
         {
             elem.gaps.emplace_back();
             profile_char<seqan3::rna4> prof{};
-            for (auto &&[current_gap, seq] : seqan3::views::zip(gap_stat, msa.sequences))
+            for (auto &&[current_gap, len, seq] : seqan3::views::zip(gap_stat, len_stat, msa.sequences))
             {
                 bool is_gap = prof.increment(seq[bpidx]);
+                if (!is_gap)
+                    ++len;
                 check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), is_gap);
             }
             elem.profile.push_back(prof);
             bpidx += (elem.is_5prime ? 1 : -1);
         }
-        while (bpseq[bpidx] < pos.first || bpseq[bpidx] > pos.second);
+        while (bpseq[bpidx] < motif.bounds.first || bpseq[bpidx] > motif.bounds.second);
 
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
+
+        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() * 1.f / msa.sequences.size()};
+        motif_len_stat += len_stat;
     };
 
-    int left = pos.first;
-    int right = pos.second;
+    int left = motif.bounds.first;
+    int right = motif.bounds.second;
     while (left <= right)
     {
         if (bpseq[left] == right) // stem
             make_stem(left, right);
 
-        if (bpseq[left] < pos.first || bpseq[left] > pos.second) // 5' loop
+        if (bpseq[left] < motif.bounds.first || bpseq[left] > motif.bounds.second) // 5' loop
             make_loop(left, true);
-        else if (bpseq[right] < pos.first || bpseq[right] > pos.second) // 3' loop
+        else if (bpseq[right] < motif.bounds.first || bpseq[right] > motif.bounds.second) // 3' loop
             make_loop(right, false);
     }
+    motif.length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() * 1.f / msa.sequences.size()};
     return std::move(motif);
 }
 
 std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif)
 {
+    os << "Motif pos = (" << motif.bounds.first << ", " << motif.bounds.second << "), "
+       << "len = (" << motif.length.min << ", " << motif.length.max << ", " << motif.length.mean << ")\n";
     for (auto const & el : motif.elements)
     {
         std::visit([&os] (auto element)
-                   {
-                       if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
-                           os << "Loop " << (element.is_5prime ? "5' " : "3' ");
-                       else
-                           os << "Stem ";
+        {
+            if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
+                os << "Loop " << (element.is_5prime ? "5' " : "3' ");
+            else
+                os << "Stem ";
 
-                       for (auto const & profile_char : element.profile)
-                           os << profile_char << ' ';
-                       os << "\nGaps: ";
-                       for (int idx = 0; idx < element.gaps.size(); ++idx)
-                           if (!element.gaps[idx].empty())
-                           {
-                               os << "\t" << idx << ": ";
-                               for (auto && [key, val] : element.gaps[idx])
-                                   os << "(" << key << "," << val << ")";
-                           }
-                       os << "\n";
-                   }, el);
-    }
+            os << "L=(" << element.length.min << ", " << element.length.max << ", " << element.length.mean << ") :\t";
+
+            for (auto const & profile_char : element.profile)
+                os << profile_char << ' ';
+            os << "\nGaps: ";
+            for (int idx = 0; idx < element.gaps.size(); ++idx)
+                if (!element.gaps[idx].empty())
+                {
+                    os << "\t" << idx << ": ";
+                    for (auto && [key, val] : element.gaps[idx])
+                        os << "(" << key << "," << val << ")";
+                }
+            os << "\n";
+        }, el);
+     }
     return os;
 }
 

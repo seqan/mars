@@ -65,13 +65,17 @@ TEST(Motif, AnalyzeStemLoop)
 
     auto motif = mars::analyze_stem_loop(msa, bpseq, {27,47});
     EXPECT_EQ(motif.bounds, std::make_pair(27ul, 47ul));
-    //TODO length
+    EXPECT_EQ(motif.length.min, 17);
+    EXPECT_EQ(motif.length.max, 21);
+    EXPECT_FLOAT_EQ(motif.length.mean, 17.8);
     EXPECT_EQ(motif.elements.size(), 2);
 
     // check the stem
     EXPECT_TRUE(std::holds_alternative<mars::stem_element>(motif.elements[0]));
     mars::stem_element const & stem = std::get<mars::stem_element>(motif.elements[0]);
-    //TODO length
+    EXPECT_EQ(stem.length.min, 10);
+    EXPECT_EQ(stem.length.max, 10);
+    EXPECT_FLOAT_EQ(stem.length.mean, 10);
     EXPECT_EQ(stem.profile.size(), 5);
     EXPECT_RANGE_EQ(stem.profile[0].quantities(), (std::array<float, 16>{0,0,0,2,0,0,1,1,0,0,0,0,1,0,0,0}));
     EXPECT_RANGE_EQ(stem.profile[1].quantities(), (std::array<float, 16>{0,0,0,1,0,1,1,0,0,0,0,0,2,0,0,0}));
@@ -85,7 +89,9 @@ TEST(Motif, AnalyzeStemLoop)
     EXPECT_TRUE(std::holds_alternative<mars::loop_element>(motif.elements[1]));
     mars::loop_element loop = std::get<mars::loop_element>(motif.elements[1]);
     EXPECT_TRUE(loop.is_5prime);
-    //TODO length
+    EXPECT_EQ(loop.length.min, 7);
+    EXPECT_EQ(loop.length.max, 11);
+    EXPECT_FLOAT_EQ(loop.length.mean, 7.8);
     EXPECT_EQ(loop.profile.size(), 11);
     EXPECT_RANGE_EQ(loop.profile[0].quantities(), (std::array<float, 4>{0,2,0,3}));
     EXPECT_RANGE_EQ(loop.profile[1].quantities(), (std::array<float, 4>{0,0,0,1}));
