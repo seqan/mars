@@ -24,7 +24,7 @@ struct stat_type
 };
 
 //! \brief The boundaries of a stemloop.
-typedef std::pair<size_t, size_t> stemloop_type;
+typedef std::pair<size_t, size_t> coord_type;
 
 //! \brief A loop element in a stemloop.
 struct loop_element
@@ -46,8 +46,11 @@ struct stem_element
 //! \brief A stemloop motif consists of a series of loop and stem elements.
 struct stemloop_motif
 {
+    //! \brief A unique identifier for the motif.
+    unsigned char uid;
+
     //! \brief The position interval, where the stemloop is located in the alignment.
-    stemloop_type bounds;
+    coord_type bounds;
 
     //! \brief The length statistics of the stemloop.
     stat_type length;
@@ -67,6 +70,16 @@ struct stemloop_motif
      * \return a reference to the new loop element.
      */
     loop_element & new_loop(bool is_5prime);
+
+    /*!
+     * \brief Analyze the motif's properties based on the MSA and interactions.
+     * \param msa The multiple structural alignment.
+     * \param bpseq The base pairing at each position.
+     */
+    void analyze(msa_type const & msa, std::vector<int> const & bpseq);
+
+    stemloop_motif(unsigned char id, coord_type pos) : uid{id}, bounds{std::move(pos)}, length{}, elements{}
+    {}
 };
 
 /*!
@@ -81,19 +94,8 @@ std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif);
  * \brief Extract the positions of the stem loops.
  * \param bpseq The base pairing at each position.
  * \param plevel The pseudoknot level at each position.
- * \return a vector of stemloop positions.
+ * \return a vector of motifs with initialized stemloop positions.
  */
-std::vector<stemloop_type> detect_stem_loops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
-
-/*!
- * \brief Create a motif from a given stemloop.
- * \param msa The multiple structural alignment.
- * \param bpseq The base pairing at each position.
- * \param pos The stem loop position.
- * \return the motif.
- */
-stemloop_motif analyze_stem_loop(msa_type const & msa,
-                                  std::vector<int> const & bpseq,
-                                  stemloop_type const & pos);
+std::vector<stemloop_motif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
 
 } // namespace mars

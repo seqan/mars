@@ -8,12 +8,12 @@ namespace mars
 
 msa_type read_msa(std::istream & stream)
 {
-    return read_clustal_file<seqan3::rna15>(stream);
+    return std::move(read_clustal_file<seqan3::rna15>(stream));
 }
 
 msa_type read_msa(std::filesystem::path const & filepath)
 {
-    return read_clustal_file<seqan3::rna15>(filepath);
+    return std::move(read_clustal_file<seqan3::rna15>(filepath));
 }
 
 std::vector<seqan3::dna4_vector> read_genome(std::filesystem::path const & filepath)
@@ -26,8 +26,8 @@ std::vector<seqan3::dna4_vector> read_genome(std::filesystem::path const & filep
         using sequence_legal_alphabet = seqan3::dna15;
     };
 
-    for (auto && record : seqan3::sequence_file_input<dna4_traits>{filepath})
-        seqs.push_back(std::move(seqan3::get<seqan3::field::seq>(record)));
+    for (auto & [seq] : seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::seq>>{filepath})
+        seqs.push_back(std::move(seq));
 
     return std::move(seqs);
 }

@@ -32,10 +32,12 @@ TEST(Motif, Detection)
                             -1,-1,-1,-1,-1, 0, 0, 0, 0,-1,
                              0, 0, 0, 0, 0, 0, 0,-1};
 
-    std::vector<mars::stemloop_type> stemloops = mars::detect_stem_loops(bpseq, plevel);
-
-    std::vector<mars::stemloop_type> expected {{27,47}, {54,68}};
-    EXPECT_RANGE_EQ(stemloops, expected);
+    std::vector<mars::stemloop_motif> motifs = mars::detect_stemloops(bpseq, plevel);
+    EXPECT_EQ(motifs.size(), 2);
+    EXPECT_EQ(motifs[0].bounds, (mars::coord_type{27, 47}));
+    EXPECT_EQ(motifs[1].bounds, (mars::coord_type{54, 68}));
+    EXPECT_EQ(motifs[0].uid, 0);
+    EXPECT_EQ(motifs[1].uid, 1);
 }
 
 TEST(Motif, AnalyzeStemLoop)
@@ -63,7 +65,8 @@ TEST(Motif, AnalyzeStemLoop)
     copy(std::string_view{"guuucuguagu-ugaau---uacaacgaugauu----uuucaugucauuggu-cgcaguugaaugcuguguagaaaua"}
          | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[4]));
 
-    auto motif = mars::analyze_stem_loop(msa, bpseq, {27,47});
+    mars::stemloop_motif motif{0, {27, 47}};
+    motif.analyze(msa, bpseq);
     EXPECT_EQ(motif.bounds, std::make_pair(27ul, 47ul));
     EXPECT_EQ(motif.length.min, 17);
     EXPECT_EQ(motif.length.max, 21);

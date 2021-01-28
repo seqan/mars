@@ -24,16 +24,17 @@ loop_element & stemloop_motif::new_loop(bool is_5prime)
     return elem;
 }
 
-std::vector<stemloop_type> detect_stem_loops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
+std::vector<stemloop_motif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
 {
     struct pk_info
     {
         int level;
         bool closing;
-        stemloop_type previous;
+        coord_type previous;
     };
     std::vector<pk_info> pk_infos{};
-    std::vector<stemloop_type> stemloops;
+    std::vector<stemloop_motif> stemloops;
+    unsigned char id_cnt{0u};
 
     // 0-based indices
     for (auto &&[idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
@@ -50,12 +51,12 @@ std::vector<stemloop_type> detect_stem_loops(std::vector<int> const & bpseq, std
             status.previous = {bp, idx};
             status.closing = true;
             if (--status.level == 0)
-                stemloops.push_back(status.previous);
+                stemloops.emplace_back(id_cnt++, status.previous);
         }
         else if (status.closing) // open an interaction (after closing the previous)
         {
             if (status.level > 0)
-                stemloops.push_back(status.previous);
+                stemloops.emplace_back(id_cnt++, status.previous);
             status.level = 1;
             status.closing = false;
         }
@@ -83,15 +84,13 @@ void check_gaps(int & current_gap, std::unordered_map<uint16_t, uint16_t> & gaps
     }
 };
 
-stemloop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & bpseq, stemloop_type const & pos)
+void stemloop_motif::analyze(msa_type const & msa, std::vector<int> const & bpseq)
 {
-    stemloop_motif motif{};
-    motif.bounds = pos;
     std::valarray<size_t> motif_len_stat(0ul, msa.sequences.size());
 
-    auto make_stem = [&msa, &bpseq, &motif, &motif_len_stat] (int & left, int & right)
+    auto make_stem = [this, &msa, &bpseq, &motif_len_stat] (int & left, int & right)
     {
-        stem_element & elem = motif.new_stem();
+        stem_element & elem = new_stem();
         std::vector<int> gap_stat(msa.sequences.size(), -1);
         std::valarray<size_t> len_stat(0ul, msa.sequences.size());
         do
@@ -121,9 +120,9 @@ stemloop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & 
         motif_len_stat += len_stat;
     };
 
-    auto make_loop = [&msa, &bpseq, &motif, &motif_len_stat] (int & bpidx, bool is_5prime)
+    auto make_loop = [this, &msa, &bpseq, &motif_len_stat] (int & bpidx, bool is_5prime)
     {
-        loop_element & elem = motif.new_loop(is_5prime);
+        loop_element & elem = new_loop(is_5prime);
         std::vector<int> gap_stat(msa.sequences.size(), -1);
         std::valarray<size_t> len_stat(0ul, msa.sequences.size());
         do
@@ -140,7 +139,7 @@ stemloop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & 
             elem.profile.push_back(prof);
             bpidx += (elem.is_5prime ? 1 : -1);
         }
-        while (bpseq[bpidx] < motif.bounds.first || bpseq[bpidx] > motif.bounds.second);
+        while (bpseq[bpidx] < bounds.first || bpseq[bpidx] > bounds.second);
 
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
@@ -149,40 +148,40 @@ stemloop_motif analyze_stem_loop(msa_type const & msa, std::vector<int> const & 
         motif_len_stat += len_stat;
     };
 
-    int left = motif.bounds.first;
-    int right = motif.bounds.second;
+    int left = bounds.first;
+    int right = bounds.second;
     while (left <= right)
     {
         if (bpseq[left] == right) // stem
             make_stem(left, right);
 
-        if (bpseq[left] < motif.bounds.first || bpseq[left] > motif.bounds.second) // 5' loop
+        if (bpseq[left] < bounds.first || bpseq[left] > bounds.second) // 5' loop
             make_loop(left, true);
-        else if (bpseq[right] < motif.bounds.first || bpseq[right] > motif.bounds.second) // 3' loop
+        else if (bpseq[right] < bounds.first || bpseq[right] > bounds.second) // 3' loop
             make_loop(right, false);
     }
-    motif.length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() * 1.f / msa.sequences.size()};
-    return std::move(motif);
+    length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() * 1.f / msa.sequences.size()};
 }
 
 std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif)
 {
-    os << "Motif pos = (" << motif.bounds.first << ", " << motif.bounds.second << "), "
-       << "len = (" << motif.length.min << ", " << motif.length.max << ", " << motif.length.mean << ")\n";
+    os << "[" << +motif.uid << "] MOTIF pos = (" << motif.bounds.first << ", "
+       << motif.bounds.second << "), len = (" << motif.length.min << ", " << motif.length.max << ", "
+       << motif.length.mean << ")\n";
     for (auto const & el : motif.elements)
     {
         std::visit([&os] (auto element)
         {
             if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
-                os << "Loop " << (element.is_5prime ? "5' " : "3' ");
+                os << "\tLoop " << (element.is_5prime ? "5' " : "3' ");
             else
-                os << "Stem ";
+                os << "\tStem ";
 
             os << "L=(" << element.length.min << ", " << element.length.max << ", " << element.length.mean << ") :\t";
 
             for (auto const & profile_char : element.profile)
                 os << profile_char << ' ';
-            os << "\nGaps: ";
+            os << "\n\tGaps: ";
             for (int idx = 0; idx < element.gaps.size(); ++idx)
                 if (!element.gaps[idx].empty())
                 {

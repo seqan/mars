@@ -35,7 +35,7 @@ class bi_directional_search
 {
 private:
     //! \brief The index in which the search is performed.
-    index_type const & index;
+    index_type index;
     //! \brief The history of queries (needed for backtracking).
     std::vector<seqan3::dna4_vector> queries{};
 
@@ -47,7 +47,7 @@ public:
      * \brief Constructor for a bi-directional search.
      * \param bi_dir_index The index in which the search is performed.
      */
-    explicit bi_directional_search(index_type const & bi_dir_index): index(bi_dir_index), queries{}, matches{}
+    explicit bi_directional_search(index_type bi_dir_index): index{std::move(bi_dir_index)}, queries{}, matches{}
     {
         queries.emplace_back();
     }
