@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
+#include <seqan3/alphabet/nucleotide/rna4.hpp>
 
 #include "index.hpp"
 
@@ -13,33 +13,34 @@ std::filesystem::path data(std::string const & filename)
 TEST(Index, Create)
 {
     // from fasta file
-    mars::index_type index1 = mars::create_index(data("genome.fa"));
+    mars::Index index1 = mars::create_index(data("genome.fa"));
 
     // from archive
-    mars::index_type index2 = mars::create_index(data("genome2.fa"));
+    mars::Index index2 = mars::create_index(data("genome2.fa"));
 
     EXPECT_TRUE(index1 == index2);
 }
 
 TEST(Index, BiDirectionalSearch)
 {
-    using seqan3::operator""_dna4;
+    using seqan3::operator""_rna4;
 
-    mars::index_type index = mars::create_index(data("RF0005.fa"));
-    mars::bi_directional_search bds(index);
+    mars::Index index = mars::create_index(data("RF0005.fa"));
+    mars::BiDirectionalSearch bds(index, 4);
+    mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
 
-    bds.append_3prime('A'_dna4);
-    bds.append_stem('U'_dna4, 'C'_dna4);
-    bds.append_5prime('A'_dna4);
-    bds.append_3prime('G'_dna4);
-    bds.append_3prime('A'_dna4);
-    bds.append_3prime('A'_dna4);
-    bds.append_stem('U'_dna4, 'C'_dna4);
+    bds.append_loop({0.f, 'A'_rna4}, false);
+    bds.append_stem({0.f, ba});
+    bds.append_loop({0.f, 'A'_rna4}, true);
+    bds.append_loop({0.f, 'G'_rna4}, false);
+    bds.append_loop({0.f, 'A'_rna4}, false);
+    bds.append_loop({0.f, 'A'_rna4}, false);
+    bds.append_stem({0.f, ba});
     bds.backtrack();
-    bds.append_3prime('A'_dna4);
-    bds.append_3prime('G'_dna4);
-    bds.append_3prime('G'_dna4);
-    bds.append_3prime('G'_dna4);
+    bds.append_loop({0.f, 'A'_rna4}, false);
+    bds.append_loop({0.f, 'G'_rna4}, false);
+    bds.append_loop({0.f, 'G'_rna4}, false);
+    bds.append_loop({0.f, 'G'_rna4}, false);
 
     size_t num_matches = bds.compute_matches();
     EXPECT_EQ(num_matches, 0ul);

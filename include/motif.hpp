@@ -15,70 +15,92 @@
 namespace mars
 {
 
+//! \brief Type for motif id. We expect to find less than 256 motifs.
+using MotifNum = uint8_t;
+
+//! \brief Type for positions within a motif. We expect that motifs are shorter than 65k.
+using MotifLen = uint16_t;
+
+//! \brief Type for the score of a motif.
+using MotifScore = float;
+
 //! \brief Store {min, mean, max} of a distribution.
-struct stat_type
+struct LengthStat
 {
-    size_t min;
-    size_t max;
+    MotifLen min;
+    MotifLen max;
     float mean;
 };
 
 //! \brief The boundaries of a stemloop.
-typedef std::pair<size_t, size_t> coord_type;
+typedef std::pair<MotifLen, MotifLen> Coordinate;
 
 //! \brief A loop element in a stemloop.
-struct loop_element
+struct LoopElement
 {
-    stat_type length;
+    LengthStat length;
     std::vector<profile_char<seqan3::rna4>> profile;
-    std::vector<std::unordered_map<uint16_t, uint16_t>> gaps;
+    std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
     bool is_5prime;
 };
 
 //! \brief A stem element in a stemloop.
-struct stem_element
+struct StemElement
 {
-    stat_type length;
+    LengthStat length;
     std::vector<profile_char<bi_alphabet<seqan3::rna4>>> profile;
-    std::vector<std::unordered_map<uint16_t, uint16_t>> gaps;
+    std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
 };
 
 //! \brief A stemloop motif consists of a series of loop and stem elements.
-struct stemloop_motif
+struct StemloopMotif
 {
     //! \brief A unique identifier for the motif.
-    unsigned char uid;
+    MotifNum uid;
 
     //! \brief The position interval, where the stemloop is located in the alignment.
-    coord_type bounds;
+    Coordinate bounds;
 
     //! \brief The length statistics of the stemloop.
-    stat_type length;
+    LengthStat length;
+
+    //! \brief The number of underlying sequences of which the motif was created.
+    SeqNum depth;
 
     //! \brief A vector of loop and stem elements that the stemloop consists of.
-    std::vector<std::variant<loop_element, stem_element>> elements;
+    std::vector<std::variant<LoopElement, StemElement>> elements;
 
     /*!
      * \brief Add a new stem to this motif.
      * \return a reference to the new stem element.
      */
-    stem_element & new_stem();
+    StemElement & new_stem();
 
     /*!
      * \brief Add a new loop to this motif.
      * \param is_5prime True for 5' loops, false for 3' loops.
      * \return a reference to the new loop element.
      */
-    loop_element & new_loop(bool is_5prime);
+    LoopElement & new_loop(bool is_5prime);
 
     /*!
      * \brief Analyze the motif's properties based on the MSA and interactions.
      * \param msa The multiple structural alignment.
      * \param bpseq The base pairing at each position.
      */
-    void analyze(msa_type const & msa, std::vector<int> const & bpseq);
+    void analyze(Msa const & msa, std::vector<int> const & bpseq);
 
-    stemloop_motif(unsigned char id, coord_type pos) : uid{id}, bounds{std::move(pos)}, length{}, elements{}
+    /*!
+     * \brief Constructor for a stemloop motif.
+     * \param id A unique ID for the motif.
+     * \param pos The location of the motif.
+     */
+    StemloopMotif(MotifNum id, Coordinate pos) :
+        uid{id},
+        bounds{std::move(pos)},
+        length{},
+        depth{},
+        elements{}
     {}
 };
 
@@ -88,7 +110,7 @@ struct stemloop_motif
  * \param motif The motif to be printed.
  * \return the stream with the motif representation appended.
  */
-std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif);
+std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif);
 
 /*!
  * \brief Extract the positions of the stem loops.
@@ -96,6 +118,6 @@ std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif);
  * \param plevel The pseudoknot level at each position.
  * \return a vector of motifs with initialized stemloop positions.
  */
-std::vector<stemloop_motif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
+std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
 
 } // namespace mars

@@ -26,6 +26,6 @@ namespace mars
  * \param msa The multiple structural alignment.
  * \return two vectors which hold the base pairs and pseudoknot levels.
  */
-std::pair<std::vector<int>, std::vector<int>> compute_structure(msa_type const & msa);
+std::pair<std::vector<int>, std::vector<int>> compute_structure(Msa const & msa);
 
 }

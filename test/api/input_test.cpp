@@ -42,7 +42,7 @@ TEST(ClustalInput, ReadFile)
     copy(std::string_view{"guuucuguagu-ugaau---uacaacgaugauu----uuucaugucauuggu-cgcaguugaaugcuguguagaaaua"}
         | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(alignment[4]));
 
-    mars::multiple_alignment msa = mars::read_msa(data("tRNA.aln"));
+    mars::Msa msa = mars::read_msa(data("tRNA.aln"));
 
     EXPECT_RANGE_EQ(msa.sequences, alignment);
     EXPECT_RANGE_EQ(msa.names, names);

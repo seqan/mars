@@ -10,30 +10,30 @@
 namespace mars
 {
 
-stem_element & stemloop_motif::new_stem()
+StemElement & StemloopMotif::new_stem()
 {
-    elements.emplace_back<stem_element>({});
-    return std::get<stem_element>(elements.back());
+    elements.emplace_back<StemElement>({});
+    return std::get<StemElement>(elements.back());
 }
 
-loop_element & stemloop_motif::new_loop(bool is_5prime)
+LoopElement & StemloopMotif::new_loop(bool is_5prime)
 {
-    elements.emplace_back<loop_element>({});
-    auto & elem = std::get<loop_element>(elements.back());
+    elements.emplace_back<LoopElement>({});
+    auto & elem = std::get<LoopElement>(elements.back());
     elem.is_5prime = is_5prime;
     return elem;
 }
 
-std::vector<stemloop_motif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
+std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
 {
-    struct pk_info
+    struct PkInfo
     {
         int level;
         bool closing;
-        coord_type previous;
+        Coordinate previous;
     };
-    std::vector<pk_info> pk_infos{};
-    std::vector<stemloop_motif> stemloops;
+    std::vector<PkInfo> pk_infos{};
+    std::vector<StemloopMotif> stemloops;
     unsigned char id_cnt{0u};
 
     // 0-based indices
@@ -45,7 +45,7 @@ std::vector<stemloop_motif> detect_stemloops(std::vector<int> const & bpseq, std
         while (pk + 1 > pk_infos.size()) // allocate a new pseudoknot layer
             pk_infos.push_back({0, false, {0, 0}});
 
-        pk_info & status = pk_infos[pk];
+        PkInfo & status = pk_infos[pk];
         if (bp < idx) // close an interaction
         {
             status.previous = {bp, idx};
@@ -69,7 +69,7 @@ std::vector<stemloop_motif> detect_stemloops(std::vector<int> const & bpseq, std
 }
 
 // private helper function for analyze_stem_loop
-void check_gaps(int & current_gap, std::unordered_map<uint16_t, uint16_t> & gaps, int col, bool is_gap)
+void check_gaps(int & current_gap, std::unordered_map<MotifLen, SeqNum> & gaps, int col, bool is_gap)
 {
     if (is_gap && current_gap == -1)
     {
@@ -84,20 +84,21 @@ void check_gaps(int & current_gap, std::unordered_map<uint16_t, uint16_t> & gaps
     }
 };
 
-void stemloop_motif::analyze(msa_type const & msa, std::vector<int> const & bpseq)
+void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
 {
-    std::valarray<size_t> motif_len_stat(0ul, msa.sequences.size());
+    depth = msa.sequences.size();
+    std::valarray<MotifLen> motif_len_stat(static_cast<MotifLen>(0), depth);
 
     auto make_stem = [this, &msa, &bpseq, &motif_len_stat] (int & left, int & right)
     {
-        stem_element & elem = new_stem();
-        std::vector<int> gap_stat(msa.sequences.size(), -1);
-        std::valarray<size_t> len_stat(0ul, msa.sequences.size());
+        StemElement & elem = new_stem();
+        std::vector<int> gap_stat(depth, -1);
+        std::valarray<MotifLen> len_stat(static_cast<MotifLen>(0), depth);
         do
         {
             assert(bpseq[right] == left);
             elem.gaps.emplace_back();
-            profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
+            profile_char<bi_alphabet<seqan3::rna4>> prof{};
             for (auto &&[current_gap, len, seq] : seqan3::views::zip(gap_stat, len_stat, msa.sequences))
             {
                 bool is_gap = prof.increment(seq[left], seq[right]);
@@ -116,15 +117,15 @@ void stemloop_motif::analyze(msa_type const & msa, std::vector<int> const & bpse
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
 
-        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() * 1.f / msa.sequences.size()};
+        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
     };
 
     auto make_loop = [this, &msa, &bpseq, &motif_len_stat] (int & bpidx, bool is_5prime)
     {
-        loop_element & elem = new_loop(is_5prime);
-        std::vector<int> gap_stat(msa.sequences.size(), -1);
-        std::valarray<size_t> len_stat(0ul, msa.sequences.size());
+        LoopElement & elem = new_loop(is_5prime);
+        std::vector<int> gap_stat(depth, -1);
+        std::valarray<MotifLen> len_stat(static_cast<MotifLen>(0), depth);
         do
         {
             elem.gaps.emplace_back();
@@ -144,7 +145,7 @@ void stemloop_motif::analyze(msa_type const & msa, std::vector<int> const & bpse
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
 
-        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() * 1.f / msa.sequences.size()};
+        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
     };
 
@@ -160,10 +161,10 @@ void stemloop_motif::analyze(msa_type const & msa, std::vector<int> const & bpse
         else if (bpseq[right] < bounds.first || bpseq[right] > bounds.second) // 3' loop
             make_loop(right, false);
     }
-    length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() * 1.f / msa.sequences.size()};
+    length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
 }
 
-std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif)
+std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
 {
     os << "[" << +motif.uid << "] MOTIF pos = (" << motif.bounds.first << ", "
        << motif.bounds.second << "), len = (" << motif.length.min << ", " << motif.length.max << ", "
@@ -172,7 +173,7 @@ std::ostream & operator<<(std::ostream & os, stemloop_motif const & motif)
     {
         std::visit([&os] (auto element)
         {
-            if constexpr (std::is_same_v<decltype(element), mars::loop_element>)
+            if constexpr (std::is_same_v<decltype(element), LoopElement>)
                 os << "\tLoop " << (element.is_5prime ? "5' " : "3' ");
             else
                 os << "\tStem ";

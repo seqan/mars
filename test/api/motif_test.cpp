@@ -32,10 +32,10 @@ TEST(Motif, Detection)
                             -1,-1,-1,-1,-1, 0, 0, 0, 0,-1,
                              0, 0, 0, 0, 0, 0, 0,-1};
 
-    std::vector<mars::stemloop_motif> motifs = mars::detect_stemloops(bpseq, plevel);
+    std::vector<mars::StemloopMotif> motifs = mars::detect_stemloops(bpseq, plevel);
     EXPECT_EQ(motifs.size(), 2);
-    EXPECT_EQ(motifs[0].bounds, (mars::coord_type{27, 47}));
-    EXPECT_EQ(motifs[1].bounds, (mars::coord_type{54, 68}));
+    EXPECT_EQ(motifs[0].bounds, (mars::Coordinate{27, 47}));
+    EXPECT_EQ(motifs[1].bounds, (mars::Coordinate{54, 68}));
     EXPECT_EQ(motifs[0].uid, 0);
     EXPECT_EQ(motifs[1].uid, 1);
 }
@@ -51,7 +51,7 @@ TEST(Motif, AnalyzeStemLoop)
                            -1,-1,-1,-1,-1,57,56,55,54,-1,
                            6, 5, 4, 3, 2, 1, 0,-1};
 
-    mars::msa_type msa{};
+    mars::Msa msa{};
     msa.sequences.resize(5);
     using std::ranges::copy;
     copy(std::string_view{"gcuuuaaaagc-uuu---gcugaagcaacggcc----uuguaagucguagaa-aacu--a-ua---cguuuuaaagcu"}
@@ -65,17 +65,17 @@ TEST(Motif, AnalyzeStemLoop)
     copy(std::string_view{"guuucuguagu-ugaau---uacaacgaugauu----uuucaugucauuggu-cgcaguugaaugcuguguagaaaua"}
          | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[4]));
 
-    mars::stemloop_motif motif{0, {27, 47}};
+    mars::StemloopMotif motif{0, {27, 47}};
     motif.analyze(msa, bpseq);
-    EXPECT_EQ(motif.bounds, std::make_pair(27ul, 47ul));
+    EXPECT_EQ(motif.bounds, (mars::Coordinate{27ul, 47ul}));
     EXPECT_EQ(motif.length.min, 17);
     EXPECT_EQ(motif.length.max, 21);
     EXPECT_FLOAT_EQ(motif.length.mean, 17.8);
     EXPECT_EQ(motif.elements.size(), 2);
 
     // check the stem
-    EXPECT_TRUE(std::holds_alternative<mars::stem_element>(motif.elements[0]));
-    mars::stem_element const & stem = std::get<mars::stem_element>(motif.elements[0]);
+    EXPECT_TRUE(std::holds_alternative<mars::StemElement>(motif.elements[0]));
+    mars::StemElement const & stem = std::get<mars::StemElement>(motif.elements[0]);
     EXPECT_EQ(stem.length.min, 10);
     EXPECT_EQ(stem.length.max, 10);
     EXPECT_FLOAT_EQ(stem.length.mean, 10);
@@ -89,8 +89,8 @@ TEST(Motif, AnalyzeStemLoop)
     }
 
     // check the loop
-    EXPECT_TRUE(std::holds_alternative<mars::loop_element>(motif.elements[1]));
-    mars::loop_element loop = std::get<mars::loop_element>(motif.elements[1]);
+    EXPECT_TRUE(std::holds_alternative<mars::LoopElement>(motif.elements[1]));
+    mars::LoopElement loop = std::get<mars::LoopElement>(motif.elements[1]);
     EXPECT_TRUE(loop.is_5prime);
     EXPECT_EQ(loop.length.min, 7);
     EXPECT_EQ(loop.length.max, 11);

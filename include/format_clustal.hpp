@@ -34,9 +34,9 @@ namespace mars
  * \return The alignment.
  */
 template<seqan3::alphabet alphabet_type>
-multiple_alignment<alphabet_type> read_clustal_file(std::istream & stream)
+MultipleAlignment<alphabet_type> read_clustal_file(std::istream & stream)
 {
-    multiple_alignment<alphabet_type> msa;
+    MultipleAlignment<alphabet_type> msa;
 
     // Define a lambda function to decide if a character is legal.
     auto check_legal_alphabet = [] (char const c)
@@ -119,7 +119,7 @@ multiple_alignment<alphabet_type> read_clustal_file(std::istream & stream)
  * \return The alignment.
  */
 template<seqan3::alphabet alphabet_type>
-multiple_alignment<alphabet_type> read_clustal_file(std::filesystem::path const & filepath)
+MultipleAlignment<alphabet_type> read_clustal_file(std::filesystem::path const & filepath)
 {
     // Open filepath as stream.
     std::ifstream stream(filepath, std::ios_base::in | std::ios::binary);

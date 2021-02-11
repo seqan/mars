@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
@@ -24,9 +25,6 @@ private:
 
     //! \brief The internal representation of a single count.
     static constexpr uint32_t const one{600};
-
-    //! \brief The number of occurrences of each character.
-    std::array<uint32_t, size> tally{};
 
     //! \brief Convert wildcard characters into their components.
     static std::string compose(char chr)
@@ -54,12 +52,11 @@ private:
                 else
                     return "N";
             default: throw std::runtime_error(std::string{"Invalid character found: "} + chr);
-//            {
-//                seqan3::debug_stream << "Invalid character found: " << chr << "\n";
-//                return std::string{chr};
-//            }
         }
     }
+
+    //! \brief The number of occurrences of each character.
+    std::array<uint32_t, size> tally{};
 
 public:
     /*!
@@ -209,7 +206,7 @@ public:
     [[nodiscard]] float quantity(uint32_t rank) const
     {
         assert(rank < size);
-        return 1.f * tally[rank] / one;
+        return tally[rank] / static_cast<float>(one);
     }
 
     /*!
@@ -222,7 +219,20 @@ public:
     std::array<float, size> quantities() const
     {
         std::array<float, size> tmp;
-        std::transform(tally.begin(), tally.end(), tmp.begin(), [] (uint32_t x) { return 1.f * x / one; });
+        std::transform(tally.begin(), tally.end(), tmp.begin(), [] (uint32_t x)
+        {
+            return x / static_cast<float>(one);
+        });
+        return std::move(tmp);
+    }
+
+    std::array<float, size> log_quantities() const
+    {
+        std::array<float, size> tmp;
+        std::transform(tally.begin(), tally.end(), tmp.begin(), [] (uint32_t x)
+        {
+            return std::log2f((x + 1) / static_cast<float>(one));
+        });
         return std::move(tmp);
     }
 };

@@ -9,7 +9,7 @@
 namespace mars
 {
 
-std::pair<std::vector<int>, std::vector<int>> compute_structure(msa_type const & msa)
+std::pair<std::vector<int>, std::vector<int>> compute_structure(Msa const & msa)
 {
     // Convert names
     std::list<std::string> names{msa.names.size()};
