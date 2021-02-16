@@ -12,13 +12,12 @@ namespace mars
 
 struct Hit
 {
-    MotifNum id;
     SeqNum seq;
     SeqLen pos;
     MotifScore score;
 
-    Hit(MotifNum id, SeqNum seq, SeqLen pos, MotifScore score) :
-        id{id}, seq{seq}, pos{pos}, score{score}
+    Hit(SeqNum seq, SeqLen pos, MotifScore score) :
+        seq{seq}, pos{pos}, score{score}
     {}
 };
 
@@ -73,13 +72,13 @@ private:
     using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>::const_reverse_iterator;
 
     BiDirectionalSearch bds;
-    std::vector<Hit> hits;
+    std::vector<std::vector<Hit>> hits;
+    std::vector<ElementIter> end_it;
     MotifScore const log_depth;
-    ElementIter end;
     BackgroundDistribution const background_distr;
 
     template <typename MotifElement>
-    void recurse_search(ElementIter const & it, MotifLen idx);
+    void recurse_search(MotifNum uid, ElementIter const & elem_it, MotifLen idx);
 
     template <seqan3::semialphabet Alphabet>
     inline std::set<std::pair<MotifScore, Alphabet>> priority(profile_char<Alphabet> const & prof) const;
@@ -88,11 +87,12 @@ public:
     SearchGenerator(Index index, SeqNum depth, unsigned char xdrop) :
         bds{std::move(index), std::move(xdrop)},
         hits{},
+        end_it{},
         log_depth{log2f(depth)},
         background_distr{}
     {}
 
-    void find_motif(StemloopMotif const & motif);
+    void find_motifs(std::vector<StemloopMotif> const & motifs);
 };
 
 } // namespace mars

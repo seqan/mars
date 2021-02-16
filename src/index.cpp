@@ -9,6 +9,9 @@ namespace mars
 
 Index create_index(std::filesystem::path const & filepath)
 {
+    if (filepath.empty())
+        return {};
+
     std::filesystem::path indexpath = filepath;
     indexpath += ".marsindex";
 

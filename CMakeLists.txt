@@ -45,8 +45,6 @@ add_library(IPknot STATIC lib/ipknot/aln.cpp lib/ipknot/fold.cpp lib/ipknot/ip.c
 target_include_directories (IPknot SYSTEM PUBLIC lib/ipknot)
 target_link_libraries (IPknot PUBLIC Contrafold Nupack)
 
-add_subdirectory (src)
-
 # Boost is needed for Nupack and Contrafold.
 if (Boost_FOUND)
     target_include_directories(Nupack PUBLIC ${Boost_INCLUDE_DIRS})
@@ -82,9 +80,12 @@ endif ()
 # OpenMP is needed for IPknot.
 if (OpenMP_CXX_FOUND)
     target_link_libraries(IPknot PUBLIC OpenMP::OpenMP_CXX)
+    add_definitions(-DMARS_WITH_OPENMP)
 else()
     message(STATUS "OpenMP not found.")
 endif ()
+
+add_subdirectory (src)
 
 message (STATUS "${FontBold}You can run `make` to build the application.${FontReset}")
 

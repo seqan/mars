@@ -1,5 +1,10 @@
 #include <chrono>
+#include <future>
 #include <vector>
+
+#ifdef MARS_WITH_OPENMP
+    #include <omp.h>
+#endif
 
 #include "index.hpp"
 #include "input_output.hpp"
@@ -20,6 +25,8 @@ int main(int argc, char ** argv)
     if (!settings.parse_arguments(argc, argv, out))
         return EXIT_FAILURE;
 
+    std::future<mars::Index> index_future = std::async(std::launch::async, mars::create_index, settings.genome_file);
+
     // Read the alignment
     mars::Msa msa = mars::read_msa(settings.alignment_file);
 
@@ -30,27 +37,22 @@ int main(int argc, char ** argv)
     std::vector<mars::StemloopMotif> motifs = mars::detect_stemloops(structure.first, structure.second);
 
     // Create a structure motif for each stemloop
-    std::for_each(motifs.begin(), motifs.end(), [&msa, &structure] (mars::StemloopMotif & motif)
-    {
-        motif.analyze(msa, structure.first);
-    });
+    #pragma omp parallel for num_threads(2)
+    for (size_t idx = 0; idx < motifs.size(); ++idx)
+        motifs[idx].analyze(msa, structure.first);
 
     // Read genome or quit
-    if (settings.genome_file.empty())
+    mars::Index index = index_future.get();
+    if (index.empty())
     {
         for (auto & motif : motifs)
             out << motif;
     }
     else
     {
-        mars::Index index = mars::create_index(settings.genome_file);
         mars::SeqNum const depth = msa.sequences.size();
         mars::SearchGenerator search{std::move(index), depth, settings.xdrop};
-        for (auto & motif : motifs)
-        {
-            std::cerr << motif;
-            search.find_motif(motif);
-        }
+        search.find_motifs(motifs);
     }
 
     auto const & sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();

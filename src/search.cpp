@@ -1,5 +1,9 @@
 #include <seqan3/range/views/zip.hpp>
 
+#ifdef MARS_WITH_OPENMP
+    #include <omp.h>
+#endif
+
 #include "search.hpp"
 
 namespace mars
@@ -21,29 +25,29 @@ inline std::set<std::pair<MotifScore, Alphabet>> SearchGenerator::priority(profi
 }
 
 template <typename MotifElement>
-void SearchGenerator::recurse_search(ElementIter const & it, MotifLen idx)
+void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, MotifLen idx)
 {
 //    std::cerr << score << " == " << bds.get_score() << std::endl;
     if (bds.xdrop())
         return;
 
-    auto const & elem = std::get<MotifElement>(*it);
+    auto const & elem = std::get<MotifElement>(*elem_it);
 
     if (idx == elem.profile.size())
     {
-        auto const next = it + 1;
-        if (next != end)
+        auto const next = elem_it + 1;
+        if (next != end_it[uid])
         {
             if (std::holds_alternative<StemElement>(*next))
-                recurse_search<StemElement>(next, 0);
+                recurse_search<StemElement>(uid, next, 0);
             else
-                recurse_search<LoopElement>(next, 0);
+                recurse_search<LoopElement>(uid, next, 0);
         }
         else
         {
             size_t num = bds.compute_matches();
             for (auto && [seq, pos] : bds.matches)
-                hits.emplace_back(MotifNum{1}, seq, pos, bds.get_score());
+                hits[uid].emplace_back(seq, pos, bds.get_score());
         }
         return;
     }
@@ -58,35 +62,44 @@ void SearchGenerator::recurse_search(ElementIter const & it, MotifLen idx)
         else
             bds.append_stem(*opt);
 
-        recurse_search<MotifElement>(it, idx + 1);
+        recurse_search<MotifElement>(uid, elem_it, idx + 1);
         bds.backtrack();
     }
 
     // try gaps
     for (auto && [len, num] : elem.gaps[idx])
-        recurse_search<MotifElement>(it, idx + len);
+        recurse_search<MotifElement>(uid, elem_it, idx + len);
 }
 
-void SearchGenerator::find_motif(StemloopMotif const & motif)
+void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
 {
-    std::cerr << "Let's search motif no. " << +motif.uid << "\n";
+    hits.resize(motifs.size());
+    end_it.resize(motifs.size());
 
-    // start with the hairpin
-    auto const iter = motif.elements.crbegin();
-    end = motif.elements.crend();
-    recurse_search<LoopElement>(iter, 0);
-
-    std::cerr << "Found " << hits.size() << " Matches";
-    MotifScore sum = 0, min = 0, max = 0;
-    for (auto const & hit : hits)
+    #pragma omp parallel for num_threads(2)
+    for (size_t idx = 0; idx < motifs.size(); ++idx)
     {
-        sum += hit.score;
-        min = std::min(min, hit.score);
-        max = std::max(max, hit.score);
+        auto const & motif = motifs[idx];
+        // start with the hairpin
+        auto const iter = motif.elements.crbegin();
+        end_it[motif.uid] = motif.elements.crend();
+        recurse_search<LoopElement>(motif.uid, iter, 0);
     }
-    std::cerr << ", score average " << sum/hits.size() << "";
-    std::cerr << ", min " << min << "";
-    std::cerr << ", max " << max << "\n";
+
+    for (auto const & motif : motifs)
+    {
+        std::cerr << "Found " << hits[motif.uid].size() << " matches for motif " << +motif.uid;
+        MotifScore sum = 0, min = 0, max = 0;
+        for (auto const & hit : hits[motif.uid])
+        {
+            sum += hit.score;
+            min = std::min(min, hit.score);
+            max = std::max(max, hit.score);
+        }
+        std::cerr << ", score average " << sum/hits[motif.uid].size() << "";
+        std::cerr << ", min " << min << "";
+        std::cerr << ", max " << max << "\n";
+    }
 }
 
 } // namespace mars
