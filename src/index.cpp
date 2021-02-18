@@ -1,5 +1,7 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/search/search.hpp>
+//#include <seqan3/io/detail/misc_input.hpp>
+//#include <seqan3/io/detail/misc_output.hpp>
 
 #include "index.hpp"
 #include "input_output.hpp"
@@ -7,10 +9,10 @@
 namespace mars
 {
 
-Index create_index(std::filesystem::path const & filepath)
+void BiDirectionalSearch::create_index(std::filesystem::path const & filepath)
 {
     if (filepath.empty())
-        return {};
+        return;
 
     std::filesystem::path indexpath = filepath;
     indexpath += ".marsindex";
@@ -21,6 +23,7 @@ Index create_index(std::filesystem::path const & filepath)
         std::ifstream ifs{indexpath, std::ios::binary};
         if (ifs.good())
         {
+//            auto stream = seqan3::detail::make_secondary_istream(ifs, indexpath);
             cereal::BinaryInputArchive iarchive{ifs};
 
             // Verify the version string.
@@ -29,10 +32,9 @@ Index create_index(std::filesystem::path const & filepath)
             assert(version[0] == '1');
 
             // Read the index from disk.
-            Index index;
             iarchive(index);
             ifs.close();
-            return std::move(index);
+            return;
         }
         ifs.close();
     }
@@ -42,18 +44,18 @@ Index create_index(std::filesystem::path const & filepath)
     {
         // Generate the BiFM index.
         auto seqs = read_genome(filepath);
-        Index index{seqs};
+        index = Index{seqs};
         std::ofstream ofs{indexpath, std::ios::binary};
         if (ofs)
         {
             // Write the index to disk, including a version string.
+//            auto stream = seqan3::detail::make_secondary_ostream(ofs, indexpath);
             cereal::BinaryOutputArchive oarchive{ofs};
             std::string version{"1 mars bi_fm_index rna5 collection\n"};
             oarchive(version);
             oarchive(index);
         }
         ofs.close();
-        return std::move(index);
     }
     else
     {
@@ -112,6 +114,7 @@ bool BiDirectionalSearch::xdrop() const
 size_t BiDirectionalSearch::compute_matches()
 {
     assert(!queries.empty());
+    assert(!index.empty());
     auto res = seqan3::search(queries.back(), index);
     matches.clear();
     for (auto & result : res)

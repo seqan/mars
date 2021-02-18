@@ -34,7 +34,7 @@ macro (add_app_test test_filename test_alternative)
 
     # Create the test target.
     add_executable (${target} ${test_filename})
-    target_link_libraries (${target} index motif io structure seqan3::seqan3 gtest_all pthread)
+    target_link_libraries (${target} motif io structure seqan3::seqan3 gtest_all pthread)
 
     # Add the test to its general target (cli or api).
     if (${test_alternative} STREQUAL "CLI_TEST")

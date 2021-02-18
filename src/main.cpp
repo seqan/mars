@@ -25,7 +25,10 @@ int main(int argc, char ** argv)
     if (!settings.parse_arguments(argc, argv, out))
         return EXIT_FAILURE;
 
-    std::future<mars::Index> index_future = std::async(std::launch::async, mars::create_index, settings.genome_file);
+    // Start reading the genome and creating the index asyncronously
+    mars::BiDirectionalSearch bds{settings.xdrop};
+    std::future<void> index_future = std::async(std::launch::async, &mars::BiDirectionalSearch::create_index, &bds, settings.genome_file);
+    // bds.create_index(settings.genome_file);
 
     // Read the alignment
     mars::Msa msa = mars::read_msa(settings.alignment_file);
@@ -41,9 +44,9 @@ int main(int argc, char ** argv)
     for (size_t idx = 0; idx < motifs.size(); ++idx)
         motifs[idx].analyze(msa, structure.first);
 
-    // Read genome or quit
-    mars::Index index = index_future.get();
-    if (index.empty())
+    // Wait for index creation process
+    index_future.wait();
+    if (settings.genome_file.empty())
     {
         for (auto & motif : motifs)
             out << motif;
@@ -51,7 +54,7 @@ int main(int argc, char ** argv)
     else
     {
         mars::SeqNum const depth = msa.sequences.size();
-        mars::SearchGenerator search{std::move(index), depth, settings.xdrop};
+        mars::SearchGenerator search{bds, depth};
         search.find_motifs(motifs);
     }
 

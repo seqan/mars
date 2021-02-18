@@ -16,22 +16,6 @@ namespace mars
 //! \brief The type of a bi-directional index over the 4-letter DNA alphabet.
 using Index = seqan3::bi_fm_index<seqan3::dna4, seqan3::text_layout::collection>;
 
-/*!
- * \brief Create an index of a genome from the specified file.
- * \param filepath The filepath to the file.
- * \return a valid index of the genome.
- * \throws seqan3::file_open_error if neither `filepath` nor `filepath.marsindex` exist.
- *
- * \details
- *
- * This function has two modes:
- *
- * 1. If `filepath.marsindex` exists: Read the already created index from this file.
- * 2. Else if `filepath` exists: Read sequences from this file, create an index
- *    and write the index to `filepath.marsindex`.
- */
-Index create_index(std::filesystem::path const & filepath);
-
 //! \brief Provides a bi-directional search step-by-step with backtracking.
 class BiDirectionalSearch
 {
@@ -54,11 +38,10 @@ public:
 
     /*!
      * \brief Constructor for a bi-directional search.
-     * \param bi_dir_index The index in which the search is performed.
      * \param xdrop The xdrop parameter.
      */
-    BiDirectionalSearch(Index bi_dir_index, unsigned char xdrop):
-        index{std::move(bi_dir_index)},
+    explicit BiDirectionalSearch(unsigned char xdrop):
+        index{},
         queries{},
         scores{},
         xdrop_dist{xdrop},
@@ -67,6 +50,22 @@ public:
         queries.emplace_back();
         scores.emplace_back(0);
     }
+
+    /*!
+     * \brief Create an index of a genome from the specified file.
+     * \param filepath The filepath to the file.
+     * \return a valid index of the genome.
+     * \throws seqan3::file_open_error if neither `filepath` nor `filepath.marsindex` exist.
+     *
+     * \details
+     *
+     * This function has two modes:
+     *
+     * 1. If `filepath.marsindex` exists: Read the already created index from this file.
+     * 2. Else if `filepath` exists: Read sequences from this file, create an index
+     *    and write the index to `filepath.marsindex`.
+     */
+    void create_index(std::filesystem::path const & filepath);
 
     /*!
      * \brief Append a character to the 5' (left) side of the query.

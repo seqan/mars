@@ -13,20 +13,19 @@ std::filesystem::path data(std::string const & filename)
 TEST(Index, Create)
 {
     // from fasta file
-    mars::Index index1 = mars::create_index(data("genome.fa"));
+    mars::BiDirectionalSearch bds(4);
+    EXPECT_NO_THROW(bds.create_index(data("genome.fa")));
 
     // from archive
-    mars::Index index2 = mars::create_index(data("genome2.fa"));
-
-    EXPECT_TRUE(index1 == index2);
+    EXPECT_NO_THROW(bds.create_index(data("genome2.fa")));
 }
 
 TEST(Index, BiDirectionalSearch)
 {
     using seqan3::operator""_rna4;
 
-    mars::Index index = mars::create_index(data("RF0005.fa"));
-    mars::BiDirectionalSearch bds(index, 4);
+    mars::BiDirectionalSearch bds(4);
+    bds.create_index(data("RF0005.fa"));
     mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
 
     bds.append_loop({0.f, 'A'_rna4}, false);

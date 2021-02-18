@@ -71,7 +71,7 @@ class SearchGenerator
 private:
     using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>::const_reverse_iterator;
 
-    BiDirectionalSearch bds;
+    BiDirectionalSearch & bds;
     std::vector<std::vector<Hit>> hits;
     std::vector<ElementIter> end_it;
     MotifScore const log_depth;
@@ -84,8 +84,8 @@ private:
     inline std::set<std::pair<MotifScore, Alphabet>> priority(profile_char<Alphabet> const & prof) const;
 
 public:
-    SearchGenerator(Index index, SeqNum depth, unsigned char xdrop) :
-        bds{std::move(index), std::move(xdrop)},
+    SearchGenerator(BiDirectionalSearch & bds, SeqNum depth) :
+        bds{bds},
         hits{},
         end_it{},
         log_depth{log2f(depth)},
