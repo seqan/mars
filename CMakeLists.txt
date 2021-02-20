@@ -27,9 +27,13 @@ set (FontBold "${Esc}[1m")
 set (FontReset "${Esc}[m")
 
 # External dependencies
+# Alternative for PkgConfig: https://dominikberner.ch/cmake-find-library/
+include(FindPkgConfig)
+pkg_check_modules(ViennaRNA REQUIRED RNAlib2)
+
 find_library(GLPK glpk)
 find_library(MPFR mpfr)
-find_library(ViennaRNA libRNA.a)
+
 find_package(OpenMP)
 find_package(Boost)
 find_package(SeqAn3 QUIET REQUIRED HINTS lib/seqan3/build_system)
@@ -42,23 +46,15 @@ add_library(Nupack STATIC lib/ipknot/nupack/nupack.cpp)
 target_include_directories (Nupack SYSTEM PUBLIC lib/ipknot/nupack)
 
 add_library(IPknot STATIC lib/ipknot/aln.cpp lib/ipknot/fold.cpp lib/ipknot/ip.cpp lib/ipknot/ipknot.cpp)
-target_include_directories (IPknot SYSTEM PUBLIC lib/ipknot)
-target_link_libraries (IPknot PUBLIC Contrafold Nupack)
+target_include_directories (IPknot SYSTEM PUBLIC lib/ipknot ${ViennaRNA_INCLUDE_DIRS})
+target_link_libraries (IPknot PUBLIC Contrafold Nupack ${ViennaRNA_LDFLAGS})
+target_compile_definitions(IPknot PRIVATE "-DHAVE_LIBRNA" PRIVATE "-DHAVE_VIENNA20")
 
 # Boost is needed for Nupack and Contrafold.
 if (Boost_FOUND)
     target_include_directories(Nupack PUBLIC ${Boost_INCLUDE_DIRS})
     target_include_directories(Contrafold PUBLIC ${Boost_INCLUDE_DIRS})
 endif()
-
-# ViennaRNA is needed for IPknot.
-if (ViennaRNA)
-    message(STATUS "Found ViennaRNA: ${ViennaRNA}")
-    target_compile_definitions(IPknot PRIVATE "-DHAVE_LIBRNA" PRIVATE "-DHAVE_VIENNA20")
-    target_link_libraries (IPknot PUBLIC ${ViennaRNA})
-else()
-    message(STATUS "ViennaRNA not found.")
-endif ()
 
 # MPFR is needed for IPknot if Vienna was compiled with MPFR.
 if (MPFR)
