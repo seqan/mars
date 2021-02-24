@@ -12,6 +12,9 @@ declare_datasource (FILE genome.fa
 declare_datasource (FILE genome2.fa.marsindex
                     URL ${CMAKE_SOURCE_DIR}/test/data/genome2.fa.marsindex)
 
+declare_datasource (FILE genome3.fa.marsindex.gz
+                    URL ${CMAKE_SOURCE_DIR}/test/data/genome3.fa.marsindex.gz)
+
 declare_datasource (FILE RF0005.fa.marsindex
                     URL ${CMAKE_SOURCE_DIR}/test/data/RF0005.fa.marsindex)
 

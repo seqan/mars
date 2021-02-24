@@ -32,6 +32,19 @@ private:
     //! \brief The xdrop parameter.
     unsigned char const xdrop_dist;
 
+    /*!
+     * \brief Archive an index and store it in a file on disk.
+     * \param indexpath The path of the index output file.
+     */
+    void write_index(std::filesystem::path & indexpath);
+
+    /*!
+     * \brief Unarchive an index and read it from a file on disk.
+     * \param indexpath The path of the index input file.
+     * \return whether an index could be parsed.
+     */
+    bool read_index(std::filesystem::path const & indexpath);
+
 public:
     //! \brief The resulting matches of the current search step.
     std::vector<std::pair<uint16_t, size_t>> matches{};

@@ -15,9 +15,21 @@ TEST(Index, Create)
     // from fasta file
     mars::BiDirectionalSearch bds(4);
     EXPECT_NO_THROW(bds.create_index(data("genome.fa")));
+#ifdef SEQAN3_HAS_ZLIB
+    std::filesystem::path const indexfile = data("genome.fa.marsindex.gz");
+#else
+    std::filesystem::path const indexfile = data("genome.fa.marsindex");
+#endif
+    EXPECT_TRUE(std::filesystem::exists(indexfile));
+    std::filesystem::remove(indexfile);
 
     // from archive
     EXPECT_NO_THROW(bds.create_index(data("genome2.fa")));
+
+    // from compressed archive
+#ifdef SEQAN3_HAS_ZLIB
+    EXPECT_NO_THROW(bds.create_index(data("genome3.fa")));
+#endif
 }
 
 TEST(Index, BiDirectionalSearch)

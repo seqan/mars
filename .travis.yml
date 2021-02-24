@@ -116,7 +116,7 @@ install:
   - |
     # install ViennaRNA, unless we are building documentation
     mkdir -p mycache
-    if [ "$TRAVIS_JOB_NAME" != "Documentation" ]
+    if [ "$TRAVIS_JOB_NAME" != "DocumentationX" ]
     then
       # check if a cached build exists
       if [ ! -f "vienna-build/ViennaRNA-2.4.16/src/ViennaRNA/libRNA.la" ]
