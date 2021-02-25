@@ -2,7 +2,10 @@
 
 #include "cli_test.hpp"
 
-TEST_F(cli_test, no_options)
+// To prevent issues when running multiple CLI tests in parallel, give each CLI test unique names:
+struct argument_parser_test : public cli_test {};
+
+TEST_F(argument_parser_test, no_options)
 {
     cli_test_result result = execute_app("mars");
     std::string expected
@@ -16,7 +19,7 @@ TEST_F(cli_test, no_options)
     EXPECT_EQ(result.err, std::string{});
 }
 
-//TEST_F(cli_test, fail_no_argument)
+//TEST_F(argument_parser_test, fail_no_argument)
 //{
 //    cli_test_result result = execute_app("mars", "-o", data("out.aln"));
 //    std::string expected
@@ -29,7 +32,7 @@ TEST_F(cli_test, no_options)
 //    EXPECT_EQ(result.err, expected);
 //}
 
-//TEST_F(cli_test, with_argument)
+//TEST_F(argument_parser_test, with_argument)
 //{
 //    cli_test_result result = execute_app("mars", data("tRNA.aln"));
 //    EXPECT_EQ(result.exit_code, 0);
@@ -37,7 +40,7 @@ TEST_F(cli_test, no_options)
 //    EXPECT_EQ(result.err, std::string{});
 //}
 //
-//TEST_F(cli_test, with_argument_verbose)
+//TEST_F(argument_parser_test, with_argument_verbose)
 //{
 //    cli_test_result result = execute_app("mars", data("tRNA.aln"), "-v");
 //    EXPECT_EQ(result.exit_code, 0);
@@ -45,7 +48,7 @@ TEST_F(cli_test, no_options)
 //    EXPECT_EQ(result.err, "Conversion was a success. Congrats!\n");
 //}
 //
-//TEST_F(cli_test, with_out_file)
+//TEST_F(argument_parser_test, with_out_file)
 //{
 //    cli_test_result result = execute_app("mars", data("tRNA.aln"), "-o", "out.fasta");
 //    seqan3::sequence_file_input fin{"out.fasta", seqan3::fields<seqan3::field::seq, seqan3::field::id>{}};

@@ -1,6 +1,6 @@
 # MaRs: Motif-based aligned RNA searcher
 
-[![Build Status](https://travis-ci.com/joergi-w/mars.svg?branch=master)](https://travis-ci.com/joergi-w/mars)
+[![Build Status](https://github.com/joergi-w/mars/workflows/MarsCI/badge.svg)](https://github.com/joergi-w/mars/actions?query=branch%3Amaster+workflow%3A%22MarsCI%22)
 
 Mars is a tool that reads a structural multiple RNA alignment (e.g. from LaRA) and derives fuzzy stem loop descriptors
 from it. These descriptors are then subject to a search in a genomic database and Mars returns the hits where the
