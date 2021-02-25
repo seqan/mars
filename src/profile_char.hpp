@@ -5,9 +5,6 @@
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
-#include <seqan3/core/type_traits/template_inspection.hpp>
-
-#include "bi_alphabet.hpp"
 
 namespace mars
 {
@@ -137,7 +134,7 @@ public:
      */
     template <seqan3::nucleotide_alphabet ext_alph_type>
     //!\cond
-        requires seqan3::detail::is_type_specialisation_of_v<alph_type, bi_alphabet>
+        requires requires (alph_type val) { val.assign_chars('C', 'C'); }
     //!\endcond
     void increment(ext_alph_type chr1, ext_alph_type chr2)
     {

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.8)
 
 # io
-add_library (io STATIC input_output.cpp)
+add_library (io STATIC multiple_alignment.cpp index_io.cpp)
 target_link_libraries (io PUBLIC seqan3::seqan3)
 target_include_directories (io PUBLIC .)
 

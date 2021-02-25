@@ -13,8 +13,8 @@ std::filesystem::path data(std::string const & filename)
 TEST(Index, Create)
 {
     // from fasta file
-    mars::BiDirectionalSearch bds(4);
-    EXPECT_NO_THROW(bds.create_index(data("genome.fa")));
+    mars::BiDirectionalIndex bds(4);
+    EXPECT_NO_THROW(bds.create(data("genome.fa")));
 #ifdef SEQAN3_HAS_ZLIB
     std::filesystem::path const indexfile = data("genome.fa.marsindex.gz");
 #else
@@ -24,20 +24,20 @@ TEST(Index, Create)
     std::filesystem::remove(indexfile);
 
     // from archive
-    EXPECT_NO_THROW(bds.create_index(data("genome2.fa")));
+    EXPECT_NO_THROW(bds.create(data("genome2.fa")));
 
     // from compressed archive
 #ifdef SEQAN3_HAS_ZLIB
-    EXPECT_NO_THROW(bds.create_index(data("genome3.fa")));
+    EXPECT_NO_THROW(bds.create(data("genome3.fa")));
 #endif
 }
 
-TEST(Index, BiDirectionalSearch)
+TEST(Index, BiDirectionalIndex)
 {
     using seqan3::operator""_rna4;
 
-    mars::BiDirectionalSearch bds(4);
-    bds.create_index(data("RF0005.fa"));
+    mars::BiDirectionalIndex bds(4);
+    bds.create(data("RF0005.fa"));
     mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
 
     bds.append_loop({0.f, 'A'_rna4}, false);

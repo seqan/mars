@@ -7,8 +7,8 @@
 #endif
 
 #include "index.hpp"
-#include "input_output.hpp"
 #include "motif.hpp"
+#include "multiple_alignment.hpp"
 #include "search.hpp"
 #include "settings.hpp"
 #include "structure.hpp"
@@ -26,9 +26,8 @@ int main(int argc, char ** argv)
         return EXIT_FAILURE;
 
     // Start reading the genome and creating the index asyncronously
-    mars::BiDirectionalSearch bds{settings.xdrop};
-    std::future<void> index_future = std::async(std::launch::async, &mars::BiDirectionalSearch::create_index, &bds, settings.genome_file);
-    // bds.create_index(settings.genome_file);
+    mars::BiDirectionalIndex bds{settings.xdrop};
+    std::future<void> index_future = std::async(std::launch::async, &mars::BiDirectionalIndex::create, &bds, settings.genome_file);
 
     // Read the alignment
     mars::Msa msa = mars::read_msa(settings.alignment_file);

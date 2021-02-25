@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <seqan3/std/filesystem>
 #include <seqan3/std/iterator>
 #include <seqan3/std/ranges>
 #include <string_view>
@@ -10,7 +11,7 @@
 #include <seqan3/range/views/char_to.hpp>
 #include <seqan3/test/expect_range_eq.hpp>
 
-#include "input_output.hpp"
+#include "multiple_alignment.hpp"
 
 // Generate the full path of a test input file that is provided in the data directory.
 std::filesystem::path data(std::string const & filename)

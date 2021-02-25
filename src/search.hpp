@@ -1,11 +1,17 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <cstdint>
+#include <set>
+#include <tuple>
+#include <variant>
+#include <vector>
+
+#include <seqan3/alphabet/concept.hpp>
 
 #include "motif.hpp"
 #include "index.hpp"
-#include "settings.hpp"
 
 namespace mars
 {
@@ -71,7 +77,7 @@ class SearchGenerator
 private:
     using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>::const_reverse_iterator;
 
-    BiDirectionalSearch & bds;
+    BiDirectionalIndex & bds;
     std::vector<std::vector<Hit>> hits;
     std::vector<ElementIter> end_it;
     MotifScore const log_depth;
@@ -84,7 +90,7 @@ private:
     inline std::set<std::pair<MotifScore, Alphabet>> priority(profile_char<Alphabet> const & prof) const;
 
 public:
-    SearchGenerator(BiDirectionalSearch & bds, SeqNum depth) :
+    SearchGenerator(BiDirectionalIndex & bds, SeqNum depth) :
         bds{bds},
         hits{},
         end_it{},

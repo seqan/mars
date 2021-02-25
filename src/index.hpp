@@ -5,19 +5,17 @@
 
 #include <seqan3/std/filesystem>
 
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
-#include <seqan3/search/fm_index/bi_fm_index.hpp>
 
 #include "bi_alphabet.hpp"
+#include "index_io.hpp"
 
 namespace mars
 {
 
-//! \brief The type of a bi-directional index over the 4-letter DNA alphabet.
-using Index = seqan3::bi_fm_index<seqan3::dna4, seqan3::text_layout::collection>;
-
 //! \brief Provides a bi-directional search step-by-step with backtracking.
-class BiDirectionalSearch
+class BiDirectionalIndex
 {
 private:
     //! \brief The index in which the search is performed.
@@ -32,19 +30,6 @@ private:
     //! \brief The xdrop parameter.
     unsigned char const xdrop_dist;
 
-    /*!
-     * \brief Archive an index and store it in a file on disk.
-     * \param indexpath The path of the index output file.
-     */
-    void write_index(std::filesystem::path & indexpath);
-
-    /*!
-     * \brief Unarchive an index and read it from a file on disk.
-     * \param indexpath The path of the index input file.
-     * \return whether an index could be parsed.
-     */
-    bool read_index(std::filesystem::path const & indexpath);
-
 public:
     //! \brief The resulting matches of the current search step.
     std::vector<std::pair<uint16_t, size_t>> matches{};
@@ -53,7 +38,7 @@ public:
      * \brief Constructor for a bi-directional search.
      * \param xdrop The xdrop parameter.
      */
-    explicit BiDirectionalSearch(unsigned char xdrop):
+    explicit BiDirectionalIndex(unsigned char xdrop):
         index{},
         queries{},
         scores{},
@@ -78,7 +63,7 @@ public:
      * 2. Else if `filepath` exists: Read sequences from this file, create an index
      *    and write the index to `filepath.marsindex`.
      */
-    void create_index(std::filesystem::path const & filepath);
+    void create(std::filesystem::path const & filepath);
 
     /*!
      * \brief Append a character to the 5' (left) side of the query.
