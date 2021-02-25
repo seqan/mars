@@ -33,7 +33,7 @@ find_library(GLPK glpk)
 find_library(MPFR mpfr)
 
 find_package(OpenMP)
-find_package(Boost)
+find_package(Boost QUIET REQUIRED)
 find_package(SeqAn3 QUIET REQUIRED HINTS lib/seqan3/build_system)
 
 # Provided dependencies.
@@ -41,18 +41,12 @@ add_library(Contrafold STATIC lib/ipknot/contrafold/SStruct.cpp lib/ipknot/contr
 target_include_directories (Contrafold SYSTEM PUBLIC lib/ipknot/contrafold)
 
 add_library(Nupack STATIC lib/ipknot/nupack/nupack.cpp)
-target_include_directories (Nupack SYSTEM PUBLIC lib/ipknot/nupack)
+target_include_directories (Nupack SYSTEM PUBLIC lib/ipknot/nupack ${Boost_INCLUDE_DIRS})
 
 add_library(IPknot STATIC lib/ipknot/aln.cpp lib/ipknot/fold.cpp lib/ipknot/ip.cpp lib/ipknot/ipknot.cpp)
 target_include_directories (IPknot SYSTEM PUBLIC lib/ipknot ${ViennaRNA_INCLUDE_DIRS})
 target_link_libraries (IPknot PUBLIC Contrafold Nupack ${ViennaRNA_LDFLAGS})
 target_compile_definitions(IPknot PRIVATE "-DHAVE_LIBRNA" PRIVATE "-DHAVE_VIENNA20")
-
-# Boost is needed for Nupack and Contrafold.
-if (Boost_FOUND)
-    target_include_directories(Nupack PUBLIC ${Boost_INCLUDE_DIRS})
-    target_include_directories(Contrafold PUBLIC ${Boost_INCLUDE_DIRS})
-endif()
 
 # MPFR is needed for IPknot if Vienna was compiled with MPFR.
 if (MPFR)
@@ -76,7 +70,7 @@ if (OpenMP_CXX_FOUND)
     target_link_libraries(IPknot PUBLIC OpenMP::OpenMP_CXX)
     add_definitions(-DMARS_WITH_OPENMP)
 else()
-    message(STATUS "OpenMP not found.")
+    message(STATUS "OpenMP_CXX not found.")
 endif ()
 
 add_subdirectory (src)

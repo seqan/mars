@@ -9,7 +9,8 @@ on:
 
 env:
   CMAKE_VERSION: 3.8.2
-  DOXYGEN_VERSION: 1.8.20
+  DOXYGEN_VERSION: 1.9.1
+  VIENNA_VERSION: 2.4.17
   SEQAN3_NO_VERSION_CHECK: 1
   TZ: Europe/Berlin
 
@@ -169,6 +170,25 @@ jobs:
           tar -C /tmp/ -zxf /tmp/doxygen-download/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
           echo "/tmp/doxygen-${DOXYGEN_VERSION}/bin" >> $GITHUB_PATH # Only available in subsequent steps!
 
+      - name: Get cached ViennaRNA
+        uses: actions/cache@v2
+        with:
+          path: /tmp/vienna-download
+          key: ${{ runner.os }}-ViennaRNA_${{ env.VIENNA_VERSION }}
+
+      - name: Setup ViennaRNA
+        run: |
+          mkdir -p /tmp/vienna-download
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            wget --retry-connrefused --waitretry=30 --read-timeout=30 --timeout=30 --tries=20 --no-clobber --quiet --directory-prefix=/tmp/vienna-download/ https://www.tbi.univie.ac.at/RNA/download/ubuntu/ubuntu_20_04/viennarna-dev_${VIENNA_VERSION}-1_amd64.deb
+            sudo apt install -f -y /tmp/vienna-download/viennarna-dev_${VIENNA_VERSION}-1_amd64.deb
+          else
+            wget --retry-connrefused --waitretry=30 --read-timeout=30 --timeout=30 --tries=20 --no-clobber --quiet --directory-prefix=/tmp/vienna-download/ https://www.tbi.univie.ac.at/RNA/download/osx/macosx/ViennaRNA-${VIENNA_VERSION}-MacOSX.dmg
+            hdiutil mount /tmp/vienna-download/ViennaRNA-${VIENNA_VERSION}-MacOSX.dmg
+            sudo installer -package /Volumes/ViennaRNA\ 2.4.17/ViennaRNA\ Package\ 2.4.17\ Installer.pkg -target "/Volumes/Macintosh HD"
+            hdiutil unmount /Volumes/ViennaRNA\ ${VIENNA_VERSION}
+          fi
+
       - name: Add package source
         if: matrix.requires_toolchain && runner.os == 'Linux'
         shell: bash
@@ -181,6 +201,14 @@ jobs:
             sudo apt-get install --yes ccache
           else
             brew install --force-bottle ccache
+          fi
+
+      - name: Install boost
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install --yes libboost-all-dev
+          else
+            brew install --force-bottle boost
           fi
 
       - name: Install compiler ${{ matrix.cxx }}

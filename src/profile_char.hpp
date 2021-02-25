@@ -9,6 +9,22 @@
 namespace mars
 {
 
+/*!\interface BiAlphabetConcept <>
+ * \brief A concept that checks whether t is a Bialphabet.
+ * \tparam t The type to be checked.
+ */
+//!\cond
+template <typename t>
+SEQAN3_CONCEPT BiAlphabetConcept =
+requires (t v)
+{
+    { seqan3::alphabet_size<t> };
+    { v.assign_chars('c', 'c') };
+    { v.to_chars() };
+};
+//!\endcond
+
+
 /*!
  * \brief Stores the frequency of characters at a specific position.
  * \tparam alph_type The legal alphabet for the profile entries.
@@ -123,6 +139,22 @@ public:
     }
 
     /*!
+     * \brief This is an overload for gapped alphabets. Increase the character count by 1 unless it is a gap.
+     * \tparam inner_alph_type The underlying alphabet type without the gap; must be a writable alphabet.
+     * \param chr The character of which the count is incremented.
+     * \returns True, if `chr` is a gap character, false otherwise.
+     */
+    template <seqan3::writable_alphabet inner_alph_type>
+    bool increment(seqan3::gapped<inner_alph_type> chr)
+    {
+        if (chr == seqan3::gap())
+            return true;
+
+        increment(inner_alph_type{}.assign_char(chr.to_char()));
+        return false;
+    }
+
+    /*!
      * \brief Increase the character count (by 1 in total) for bi-alphabets.
      * \tparam ext_alph_type The extended alphabet type that may contain wildcards; must be a nucleotide alphabet.
      * \param chr1 The first character of the bi-character.
@@ -134,7 +166,7 @@ public:
      */
     template <seqan3::nucleotide_alphabet ext_alph_type>
     //!\cond
-        requires requires (alph_type val) { val.assign_chars('C', 'C'); }
+        requires BiAlphabetConcept<alph_type>
     //!\endcond
     void increment(ext_alph_type chr1, ext_alph_type chr2)
     {
@@ -154,28 +186,15 @@ public:
      * \returns True, if `chr1` or `chr2` is a gap character, false otherwise.
      */
     template <seqan3::writable_alphabet inner_alph_type>
+    //!\cond
+        requires BiAlphabetConcept<alph_type>
+    //!\endcond
     bool increment(seqan3::gapped<inner_alph_type> chr1, seqan3::gapped<inner_alph_type> chr2)
     {
         if (chr1 == seqan3::gap() || chr2 == seqan3::gap())
             return true;
 
         increment(inner_alph_type{}.assign_char(chr1.to_char()), inner_alph_type{}.assign_char(chr2.to_char()));
-        return false;
-    }
-
-    /*!
-     * \brief This is an overload for gapped alphabets. Increase the character count by 1 unless it is a gap.
-     * \tparam inner_alph_type The underlying alphabet type without the gap; must be a writable alphabet.
-     * \param chr The character of which the count is incremented.
-     * \returns True, if `chr` is a gap character, false otherwise.
-     */
-    template <seqan3::writable_alphabet inner_alph_type>
-    bool increment(seqan3::gapped<inner_alph_type> chr)
-    {
-        if (chr == seqan3::gap())
-            return true;
-
-        increment(inner_alph_type{}.assign_char(chr.to_char()));
         return false;
     }
 

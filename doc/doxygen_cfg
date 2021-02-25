@@ -867,8 +867,7 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ${CMAKE_SOURCE_DIR}/include \
-                         ${CMAKE_SOURCE_DIR}/src \
+INPUT                  = ${CMAKE_SOURCE_DIR}/src \
                          ${CMAKE_SOURCE_DIR}/LICENSE.md
 
 # This tag can be used to specify the character encoding of the source files
@@ -2205,7 +2204,7 @@ SEARCH_INCLUDES        = YES
 # preprocessor.
 # This tag requires that the tag SEARCH_INCLUDES is set to YES.
 
-INCLUDE_PATH           = ${CMAKE_SOURCE_DIR}/include
+INCLUDE_PATH           = ${CMAKE_SOURCE_DIR}/src
 
 # You can use the INCLUDE_FILE_PATTERNS tag to specify one or more wildcard
 # patterns (like *.h and *.hpp) to filter out the header-files in the
