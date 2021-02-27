@@ -52,13 +52,13 @@ void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, 
         return;
     }
 
-    auto prio = priority(elem.profile[idx]);
+    auto prio = priority(elem.profile[elem.profile.size() - idx - 1]);
 
     // try to extend the pattern
     for (auto opt = prio.crbegin(); opt != prio.crend(); ++opt)
     {
         if constexpr (std::is_same_v<MotifElement, LoopElement>)
-            bds.append_loop(*opt, false);
+            bds.append_loop(*opt, elem.is_5prime);
         else
             bds.append_stem(*opt);
 
@@ -67,7 +67,7 @@ void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, 
     }
 
     // try gaps
-    for (auto && [len, num] : elem.gaps[idx])
+    for (auto && [len, num] : elem.gaps[elem.gaps.size() - idx - 1])
         recurse_search<MotifElement>(uid, elem_it, idx + len);
 }
 

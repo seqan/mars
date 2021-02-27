@@ -91,20 +91,20 @@ TEST(Motif, AnalyzeStemLoop)
     // check the loop
     EXPECT_TRUE(std::holds_alternative<mars::LoopElement>(motif.elements[1]));
     mars::LoopElement loop = std::get<mars::LoopElement>(motif.elements[1]);
-    EXPECT_TRUE(loop.is_5prime);
+    EXPECT_FALSE(loop.is_5prime);
     EXPECT_EQ(loop.length.min, 7);
     EXPECT_EQ(loop.length.max, 11);
     EXPECT_FLOAT_EQ(loop.length.mean, 7.8);
     EXPECT_EQ(loop.profile.size(), 11);
-    EXPECT_RANGE_EQ(loop.profile[0].quantities(), (std::array<float, 4>{0,2,0,3}));
-    EXPECT_RANGE_EQ(loop.profile[1].quantities(), (std::array<float, 4>{0,0,0,1}));
+    EXPECT_RANGE_EQ(loop.profile[10].quantities(), (std::array<float, 4>{0,2,0,3}));
+    EXPECT_RANGE_EQ(loop.profile[9].quantities(), (std::array<float, 4>{0,0,0,1}));
     EXPECT_EQ(loop.gaps.size(), 11);
-    for (int idx : {0, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+    for (int idx : {0, 1, 2, 3, 4, 5, 6, 7, 8, 10})
     {
         EXPECT_TRUE(loop.gaps[idx].empty());
     }
-    EXPECT_EQ(loop.gaps[1].size(), 1);
-    auto const & gap_entry = loop.gaps[1].begin();
+    EXPECT_EQ(loop.gaps[9].size(), 1);
+    auto const & gap_entry = loop.gaps[9].begin();
     EXPECT_EQ(gap_entry->first, 4);
     EXPECT_EQ(gap_entry->second, 4);
 }

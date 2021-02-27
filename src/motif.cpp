@@ -68,8 +68,8 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
     return std::move(stemloops);
 }
 
-// private helper function for analyze_stem_loop
-void check_gaps(int & current_gap, std::unordered_map<MotifLen, SeqNum> & gaps, int col, bool is_gap)
+// private helper function for analyze
+void check_gaps(int & current_gap, std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, int col, bool is_gap)
 {
     if (is_gap && current_gap == -1)
     {
@@ -77,7 +77,7 @@ void check_gaps(int & current_gap, std::unordered_map<MotifLen, SeqNum> & gaps, 
     }
     else if (!is_gap && current_gap > -1)
     {
-        auto[iter, succ] = gaps.emplace(col - current_gap, 1);
+        auto[iter, succ] = gaps[col - 1].emplace(col - current_gap, 1);
         if (!succ)
             ++(iter->second);
         current_gap = -1;
@@ -106,7 +106,7 @@ void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
                     ++len;
                 if (seq[right] != seqan3::gap())
                     ++len;
-                check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), is_gap);
+                check_gaps(current_gap, elem.gaps, elem.profile.size(), is_gap);
             }
             elem.profile.push_back(prof);
             ++left;
@@ -115,7 +115,7 @@ void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
         while (bpseq[left] == right);
 
         for (int current_gap : gap_stat)
-            check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
+            check_gaps(current_gap, elem.gaps, elem.profile.size(), false);
 
         elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
@@ -135,7 +135,7 @@ void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
                 bool is_gap = prof.increment(seq[bpidx]);
                 if (!is_gap)
                     ++len;
-                check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), is_gap);
+                check_gaps(current_gap, elem.gaps, elem.profile.size(), is_gap);
             }
             elem.profile.push_back(prof);
             bpidx += (elem.is_5prime ? 1 : -1);
@@ -143,7 +143,7 @@ void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
         while (bpseq[bpidx] < bounds.first || bpseq[bpidx] > bounds.second);
 
         for (int current_gap : gap_stat)
-            check_gaps(current_gap, elem.gaps[current_gap], elem.profile.size(), false);
+            check_gaps(current_gap, elem.gaps, elem.profile.size(), false);
 
         elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
@@ -156,10 +156,10 @@ void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
         if (bpseq[left] == right) // stem
             make_stem(left, right);
 
-        if (bpseq[left] < bounds.first || bpseq[left] > bounds.second) // 5' loop
-            make_loop(left, true);
-        else if (bpseq[right] < bounds.first || bpseq[right] > bounds.second) // 3' loop
+        if (bpseq[right] < bounds.first || bpseq[right] > bounds.second) // 3' loop
             make_loop(right, false);
+        else if (bpseq[left] < bounds.first || bpseq[left] > bounds.second) // 5' loop
+            make_loop(left, true);
     }
     length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
 }
