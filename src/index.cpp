@@ -1,7 +1,6 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/search/search.hpp>
 
-
 #include "index.hpp"
 
 namespace mars
@@ -17,7 +16,10 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
 
     // Check whether an index already exists.
     if (read_index(index, indexpath))
+    {
+        cursors.emplace_back(index);
         return;
+    }
 
     // No index found: read genome and create an index.
     if (std::filesystem::exists(filepath))
@@ -25,6 +27,7 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
         // Generate the BiFM index.
         auto seqs = read_genome(filepath);
         index = Index{seqs};
+        cursors.emplace_back(index);
         write_index(index, indexpath);
     }
     else
@@ -39,44 +42,48 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     }
 }
 
-void BiDirectionalIndex::append_loop(std::pair<float, seqan3::rna4> item, bool left)
+bool BiDirectionalIndex::append_loop(std::pair<float, seqan3::rna4> item, bool left)
 {
-    assert(!queries.empty());
-    seqan3::dna4_vector elem = queries.back();
+    bool succ;
+    seqan3::bi_fm_index_cursor<Index> new_cur(cursors.back());
+
     if (left)
-        elem.insert(elem.begin(), item.second);
+        succ = new_cur.extend_left(item.second);
     else
-        elem.push_back(item.second);
-    queries.push_back(elem);
-    scores.push_back(scores.back() + item.first);
-//    seqan3::debug_stream << "add loop " << scores << "\t" << queries.back() << "\t" << item.first << "\n";
+        succ = new_cur.extend_right(item.second);
+
+    if (succ)
+    {
+        cursors.push_back(new_cur);
+        scores.push_back(scores.back() + item.first);
+    }
+
+    return succ;
 }
 
-void BiDirectionalIndex::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item)
+bool BiDirectionalIndex::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item)
 {
+    seqan3::bi_fm_index_cursor<Index> new_cur(cursors.back());
     using seqan3::get;
-    assert(!queries.empty());
-    seqan3::dna4_vector elem = queries.back();
     seqan3::rna4 c = get<0>(stem_item.second);
-    elem.insert(elem.begin(), c);
-    c = get<1>(stem_item.second);
-    elem.push_back(c);
-    queries.push_back(elem);
-    scores.push_back(scores.back() + stem_item.first);
-//    seqan3::debug_stream << "add stem " << scores << "\t" << queries.back() << "\t" << stem_item.first << "\n";
+    bool succ = new_cur.extend_left(c);
+    if (succ)
+    {
+        c = get<1>(stem_item.second);
+        succ = new_cur.extend_right(c);
+    }
+    if (succ)
+    {
+        cursors.push_back(new_cur);
+        scores.push_back(scores.back() + stem_item.first);
+    }
+    return succ;
 }
 
 void BiDirectionalIndex::backtrack()
 {
-    assert(!queries.empty());
-
-    queries.pop_back();
     scores.pop_back();
-}
-
-float BiDirectionalIndex::get_score() const
-{
-    return scores.back();
+    cursors.pop_back();
 }
 
 bool BiDirectionalIndex::xdrop() const
@@ -87,15 +94,10 @@ bool BiDirectionalIndex::xdrop() const
         return scores.back() < scores[scores.size() - xdrop_dist];
 }
 
-size_t BiDirectionalIndex::compute_matches()
+void BiDirectionalIndex::compute_hits(std::vector<Hit> & hits)
 {
-    assert(!queries.empty());
-    assert(!index.empty());
-    auto res = seqan3::search(queries.back(), index);
-    matches.clear();
-    for (auto & result : res)
-        matches.emplace_back(result.reference_id(), result.reference_begin_position());
-    return matches.size();
+    for (auto && [seq, pos] : cursors.back().locate())
+        hits.emplace_back(seq, pos, scores.back());
 }
 
 } // namespace mars

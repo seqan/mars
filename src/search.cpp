@@ -27,7 +27,6 @@ inline std::set<std::pair<MotifScore, Alphabet>> SearchGenerator::priority(profi
 template <typename MotifElement>
 void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, MotifLen idx)
 {
-//    std::cerr << score << " == " << bds.get_score() << std::endl;
     if (bds.xdrop())
         return;
 
@@ -36,19 +35,12 @@ void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, 
     if (idx == elem.profile.size())
     {
         auto const next = elem_it + 1;
-        if (next != end_it[uid])
-        {
-            if (std::holds_alternative<StemElement>(*next))
-                recurse_search<StemElement>(uid, next, 0);
-            else
-                recurse_search<LoopElement>(uid, next, 0);
-        }
+        if (next == end_it[uid])
+            bds.compute_hits(hits[uid]);
+        else if (std::holds_alternative<StemElement>(*next))
+            recurse_search<StemElement>(uid, next, 0);
         else
-        {
-            size_t num = bds.compute_matches();
-            for (auto && [seq, pos] : bds.matches)
-                hits[uid].emplace_back(seq, pos, bds.get_score());
-        }
+            recurse_search<LoopElement>(uid, next, 0);
         return;
     }
 
@@ -57,13 +49,17 @@ void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, 
     // try to extend the pattern
     for (auto opt = prio.crbegin(); opt != prio.crend(); ++opt)
     {
+        bool succ;
         if constexpr (std::is_same_v<MotifElement, LoopElement>)
-            bds.append_loop(*opt, elem.is_5prime);
+            succ = bds.append_loop(*opt, elem.is_5prime);
         else
-            bds.append_stem(*opt);
+            succ = bds.append_stem(*opt);
 
-        recurse_search<MotifElement>(uid, elem_it, idx + 1);
-        bds.backtrack();
+        if (succ)
+        {
+            recurse_search<MotifElement>(uid, elem_it, idx + 1);
+            bds.backtrack();
+        }
     }
 
     // try gaps
@@ -76,7 +72,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
     hits.resize(motifs.size());
     end_it.resize(motifs.size());
 
-    #pragma omp parallel for num_threads(2)
+//    #pragma omp parallel for num_threads(2)
     for (size_t idx = 0; idx < motifs.size(); ++idx)
     {
         auto const & motif = motifs[idx];

@@ -40,23 +40,21 @@ TEST(Index, BiDirectionalIndex)
     bds.create(data("RF0005.fa"));
     mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
 
-    bds.append_loop({0.f, 'A'_rna4}, false);
-    bds.append_stem({0.f, ba});
-    bds.append_loop({0.f, 'A'_rna4}, true);
-    bds.append_loop({0.f, 'G'_rna4}, false);
-    bds.append_loop({0.f, 'A'_rna4}, false);
-    bds.append_loop({0.f, 'A'_rna4}, false);
-    bds.append_stem({0.f, ba});
+    EXPECT_TRUE(bds.append_loop({1.f, 'A'_rna4}, false));
+    EXPECT_TRUE(bds.append_stem({2.f, ba}));
+    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, true));
+    EXPECT_TRUE(bds.append_loop({0.f, 'G'_rna4}, false));
+    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, false));
+    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, false));
+    EXPECT_TRUE(bds.append_stem({0.5f, ba}));
     bds.backtrack();
-    bds.append_loop({0.f, 'A'_rna4}, false);
-    bds.append_loop({0.f, 'G'_rna4}, false);
-    bds.append_loop({0.f, 'G'_rna4}, false);
-    bds.append_loop({0.f, 'G'_rna4}, false);
+    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, false));
+    EXPECT_TRUE(bds.append_loop({0.f, 'G'_rna4}, false));
+    EXPECT_FALSE(bds.xdrop());
+    EXPECT_TRUE(bds.append_loop({0.f, 'G'_rna4}, false));
+    EXPECT_FALSE(bds.append_loop({0.f, 'G'_rna4}, false));
 
-    size_t num_matches = bds.compute_matches();
-    EXPECT_EQ(num_matches, 0ul);
-
-    bds.backtrack();
-    num_matches = bds.compute_matches();
-    EXPECT_EQ(num_matches, 5ul);
+    std::vector<mars::Hit> hits{};
+    bds.compute_hits(hits);
+    EXPECT_EQ(hits.size(), 5ul);
 }

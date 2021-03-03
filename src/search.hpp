@@ -16,17 +16,6 @@
 namespace mars
 {
 
-struct Hit
-{
-    SeqNum seq;
-    SeqLen pos;
-    MotifScore score;
-
-    Hit(SeqNum seq, SeqLen pos, MotifScore score) :
-        seq{seq}, pos{pos}, score{score}
-    {}
-};
-
 struct BackgroundDistribution
 {
     std::array<MotifScore, 16> const r16

@@ -7,12 +7,24 @@
 
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
+#include <seqan3/search/fm_index/bi_fm_index_cursor.hpp>
 
 #include "bi_alphabet.hpp"
 #include "index_io.hpp"
 
 namespace mars
 {
+
+struct Hit
+{
+    uint16_t seq;
+    size_t pos;
+    float score;
+
+    Hit(uint16_t seq, size_t pos, float score) :
+        seq{seq}, pos{pos}, score{score}
+    {}
+};
 
 //! \brief Provides a bi-directional search step-by-step with backtracking.
 class BiDirectionalIndex
@@ -21,8 +33,8 @@ private:
     //! \brief The index in which the search is performed.
     Index index;
 
-    //! \brief The history of queries (needed for backtracking).
-    std::vector<seqan3::dna4_vector> queries;
+    //! \brief The history of cursors (needed for backtracking).
+    std::vector<seqan3::bi_fm_index_cursor<Index>> cursors;
 
     //! \brief The history of scores;
     std::vector<float> scores;
@@ -31,21 +43,16 @@ private:
     unsigned char const xdrop_dist;
 
 public:
-    //! \brief The resulting matches of the current search step.
-    std::vector<std::pair<uint16_t, size_t>> matches{};
-
     /*!
      * \brief Constructor for a bi-directional search.
      * \param xdrop The xdrop parameter.
      */
     explicit BiDirectionalIndex(unsigned char xdrop):
         index{},
-        queries{},
+        cursors{},
         scores{},
-        xdrop_dist{xdrop},
-        matches{}
+        xdrop_dist{xdrop}
     {
-        queries.emplace_back();
         scores.emplace_back(0);
     }
 
@@ -69,14 +76,16 @@ public:
      * \brief Append a character to the 5' (left) side of the query.
      * \param item The character to be added.
      * \param left Whether the loop is at the 5' side.
+     * \returns whether the operation was successful.
      */
-    void append_loop(std::pair<float, seqan3::rna4> item, bool left);
+    bool append_loop(std::pair<float, seqan3::rna4> item, bool left);
 
     /*!
      * \brief Append a character pair at both sides of the query.
      * \param stem_item The score and characters to be added.
+     * \returns whether the operation was successful.
      */
-    void append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item);
+    bool append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item);
 
     //! \brief Revert the previous append step, which shrinks the query by one or two characters.
     void backtrack();
@@ -88,16 +97,10 @@ public:
     [[nodiscard]] bool xdrop() const;
 
     /*!
-     * \brief Get the total score of the current query.
-     * \return the score.
+     * \brief Perform the search with the current query and store the result in `hits`.
+     * \param hits The result vector.
      */
-    [[nodiscard]] float get_score() const;
-
-    /*!
-     * \brief Perform the search with the current query and store the result in `matches`.
-     * \return The number of matches that have been found.
-     */
-    size_t compute_matches();
+    void compute_hits(std::vector<Hit> & hits);
 };
 
 } // namespace mars
