@@ -171,12 +171,14 @@ jobs:
           echo "/tmp/doxygen-${DOXYGEN_VERSION}/bin" >> $GITHUB_PATH # Only available in subsequent steps!
 
       - name: Get cached ViennaRNA
+        if: matrix.requires_toolchain
         uses: actions/cache@v2
         with:
           path: /tmp/vienna-download
           key: ${{ runner.os }}-ViennaRNA_${{ env.VIENNA_VERSION }}
 
       - name: Setup ViennaRNA
+        if: matrix.requires_toolchain
         run: |
           mkdir -p /tmp/vienna-download
           if [ "$RUNNER_OS" == "Linux" ]; then
@@ -204,6 +206,7 @@ jobs:
           fi
 
       - name: Install boost
+        if: matrix.requires_toolchain
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
             sudo apt-get install --yes libboost-all-dev

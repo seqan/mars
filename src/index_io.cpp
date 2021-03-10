@@ -27,7 +27,7 @@ std::vector<seqan3::dna4_vector> read_genome(std::filesystem::path const & filep
     return std::move(seqs);
 }
 
-void write_index(Index const & index, std::filesystem::path & indexpath)
+void write_index(Index const & index, uint16_t index_num_seq, std::filesystem::path & indexpath)
 {
 #ifdef SEQAN3_HAS_ZLIB
     indexpath += ".gz";
@@ -42,9 +42,10 @@ void write_index(Index const & index, std::filesystem::path & indexpath)
 #else
         cereal::BinaryOutputArchive oarchive{ofs};
 #endif
-        std::string const version{"1 mars bi_fm_index rna5 collection\n"};
+        std::string const version{"1 mars bi_fm_index<dna4,collection>\n"};
         oarchive(version);
         oarchive(index);
+        oarchive(index_num_seq);
 #ifdef SEQAN3_HAS_ZLIB
         gzstream.flush();
 #endif
@@ -52,7 +53,7 @@ void write_index(Index const & index, std::filesystem::path & indexpath)
     ofs.close();
 }
 
-bool read_index(Index & index, std::filesystem::path const & indexpath)
+bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path const & indexpath)
 {
     bool success = false;
 #ifdef SEQAN3_HAS_ZLIB
@@ -69,6 +70,7 @@ bool read_index(Index & index, std::filesystem::path const & indexpath)
             iarchive(version);
             assert(version[0] == '1');
             iarchive(index);
+            iarchive(index_num_seq);
             success = true;
         }
         ifs.close();
@@ -84,6 +86,7 @@ bool read_index(Index & index, std::filesystem::path const & indexpath)
             iarchive(version);
             assert(version[0] == '1');
             iarchive(index);
+            iarchive(index_num_seq);
             success = true;
         }
         ifs.close();

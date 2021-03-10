@@ -68,12 +68,11 @@ private:
 
     BiDirectionalIndex & bds;
     std::vector<std::vector<Hit>> hits;
-    std::vector<ElementIter> end_it;
     MotifScore const log_depth;
     BackgroundDistribution const background_distr;
 
     template <typename MotifElement>
-    void recurse_search(MotifNum uid, ElementIter const & elem_it, MotifLen idx);
+    void recurse_search(StemloopMotif const & motif, ElementIter const & elem_it, MotifLen idx);
 
     template <seqan3::semialphabet Alphabet>
     inline std::set<std::pair<MotifScore, Alphabet>> priority(profile_char<Alphabet> const & prof) const;
@@ -82,7 +81,6 @@ public:
     SearchGenerator(BiDirectionalIndex & bds, SeqNum depth) :
         bds{bds},
         hits{},
-        end_it{},
         log_depth{log2f(depth)},
         background_distr{}
     {}

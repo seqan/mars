@@ -11,19 +11,18 @@
 
 #include "bi_alphabet.hpp"
 #include "index_io.hpp"
+#include "motif.hpp"
 
 namespace mars
 {
 
 struct Hit
 {
-    uint16_t seq;
     size_t pos;
+    uint8_t midx;
     float score;
 
-    Hit(uint16_t seq, size_t pos, float score) :
-        seq{seq}, pos{pos}, score{score}
-    {}
+    Hit(size_t pos, uint8_t midx, float score) : pos{pos}, midx{midx}, score{score} {}
 };
 
 //! \brief Provides a bi-directional search step-by-step with backtracking.
@@ -32,6 +31,9 @@ class BiDirectionalIndex
 private:
     //! \brief The index in which the search is performed.
     Index index;
+
+    //! \brief The number of sequences in the index.
+    uint16_t index_num_seq;
 
     //! \brief The history of cursors (needed for backtracking).
     std::vector<seqan3::bi_fm_index_cursor<Index>> cursors;
@@ -49,6 +51,7 @@ public:
      */
     explicit BiDirectionalIndex(unsigned char xdrop):
         index{},
+        index_num_seq{},
         cursors{},
         scores{},
         xdrop_dist{xdrop}
@@ -98,9 +101,19 @@ public:
 
     /*!
      * \brief Perform the search with the current query and store the result in `hits`.
-     * \param hits The result vector.
+     * \param[out] hits The result vector.
+     * \param[in] motif The motif for which the results are reported.
      */
-    void compute_hits(std::vector<Hit> & hits);
+    void compute_hits(std::vector<std::vector<Hit>> & hits, StemloopMotif const & motif) const;
+
+    /*!
+     * \brief Access the number of sequences in the index.
+     * \return the number of sequences
+     */
+    uint16_t get_num_seq() const
+    {
+        return index_num_seq;
+    }
 };
 
 } // namespace mars

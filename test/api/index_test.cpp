@@ -54,7 +54,8 @@ TEST(Index, BiDirectionalIndex)
     EXPECT_TRUE(bds.append_loop({0.f, 'G'_rna4}, false));
     EXPECT_FALSE(bds.append_loop({0.f, 'G'_rna4}, false));
 
-    std::vector<mars::Hit> hits{};
-    bds.compute_hits(hits);
-    EXPECT_EQ(hits.size(), 5ul);
+    std::vector<std::vector<mars::Hit>> hits(10);
+    mars::StemloopMotif motif{0, {27, 47}};
+    bds.compute_hits(hits, motif);
+    EXPECT_EQ(hits.size(), 10ul);
 }

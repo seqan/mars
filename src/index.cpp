@@ -15,7 +15,7 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     indexpath += ".marsindex";
 
     // Check whether an index already exists.
-    if (read_index(index, indexpath))
+    if (read_index(index, index_num_seq, indexpath))
     {
         cursors.emplace_back(index);
         return;
@@ -25,10 +25,11 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     if (std::filesystem::exists(filepath))
     {
         // Generate the BiFM index.
-        auto seqs = read_genome(filepath);
+        std::vector<std::vector<seqan3::dna4>> seqs = read_genome(filepath);
         index = Index{seqs};
+        index_num_seq = seqs.size();
         cursors.emplace_back(index);
-        write_index(index, indexpath);
+        write_index(index, index_num_seq, indexpath);
     }
     else
     {
@@ -94,10 +95,12 @@ bool BiDirectionalIndex::xdrop() const
         return scores.back() < scores[scores.size() - xdrop_dist];
 }
 
-void BiDirectionalIndex::compute_hits(std::vector<Hit> & hits)
+void BiDirectionalIndex::compute_hits(std::vector<std::vector<Hit>> & hits, StemloopMotif const & motif) const
 {
     for (auto && [seq, pos] : cursors.back().locate())
-        hits.emplace_back(seq, pos, scores.back());
+        hits[seq].emplace_back(pos >= motif.bounds.first ? pos - motif.bounds.first : 0,
+                               motif.uid,
+                               scores.back());
 }
 
 } // namespace mars

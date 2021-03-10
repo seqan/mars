@@ -25,7 +25,7 @@ inline std::set<std::pair<MotifScore, Alphabet>> SearchGenerator::priority(profi
 }
 
 template <typename MotifElement>
-void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, MotifLen idx)
+void SearchGenerator::recurse_search(StemloopMotif const & motif, ElementIter const & elem_it, MotifLen idx)
 {
     if (bds.xdrop())
         return;
@@ -35,12 +35,12 @@ void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, 
     if (idx == elem.profile.size())
     {
         auto const next = elem_it + 1;
-        if (next == end_it[uid])
-            bds.compute_hits(hits[uid]);
+        if (next == motif.elements.crend())
+            bds.compute_hits(hits, motif);
         else if (std::holds_alternative<StemElement>(*next))
-            recurse_search<StemElement>(uid, next, 0);
+            recurse_search<StemElement>(motif, next, 0);
         else
-            recurse_search<LoopElement>(uid, next, 0);
+            recurse_search<LoopElement>(motif, next, 0);
         return;
     }
 
@@ -57,44 +57,102 @@ void SearchGenerator::recurse_search(MotifNum uid, ElementIter const & elem_it, 
 
         if (succ)
         {
-            recurse_search<MotifElement>(uid, elem_it, idx + 1);
+            recurse_search<MotifElement>(motif, elem_it, idx + 1);
             bds.backtrack();
         }
     }
 
     // try gaps
     for (auto && [len, num] : elem.gaps[elem.gaps.size() - idx - 1])
-        recurse_search<MotifElement>(uid, elem_it, idx + len);
+        recurse_search<MotifElement>(motif, elem_it, idx + len);
 }
 
 void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
 {
-    hits.resize(motifs.size());
-    end_it.resize(motifs.size());
+    assert(motifs.size() <= UINT8_MAX);
+    uint8_t const num_motifs = motifs.size();
+    hits.resize(bds.get_num_seq());
 
 //    #pragma omp parallel for num_threads(2)
-    for (size_t idx = 0; idx < motifs.size(); ++idx)
+    for (uint8_t midx = 0; midx < num_motifs; ++midx)
     {
-        auto const & motif = motifs[idx];
+        auto const & motif = motifs[midx];
         // start with the hairpin
         auto const iter = motif.elements.crbegin();
-        end_it[motif.uid] = motif.elements.crend();
-        recurse_search<LoopElement>(motif.uid, iter, 0);
+        recurse_search<LoopElement>(motif, iter, 0);
+        std::cerr << motif << std::endl;
     }
 
-    for (auto const & motif : motifs)
-    {
-        std::cerr << "Found " << hits[motif.uid].size() << " matches for motif " << +motif.uid;
-        MotifScore sum = 0, min = 0, max = 0;
-        for (auto const & hit : hits[motif.uid])
+    #pragma omp parallel for num_threads(4)
+    for (uint16_t sidx = 0u; sidx < bds.get_num_seq(); ++sidx)
+        std::sort(hits[sidx].begin(), hits[sidx].end(), [] (Hit const & a, Hit const & b)
         {
-            sum += hit.score;
-            min = std::min(min, hit.score);
-            max = std::max(max, hit.score);
-        }
-        std::cerr << ", score average " << sum/hits[motif.uid].size() << "";
-        std::cerr << ", min " << min << "";
-        std::cerr << ", max " << max << "\n";
+            if (a.pos != b.pos)
+                return a.pos < b.pos;
+            if (a.midx != b.midx)
+                return a.midx < b.midx;
+            return a.score < b.score;
+        });
+
+//    for (uint16_t sidx = 0; sidx < bds.get_num_seq(); ++ sidx)
+//    {
+//        for (auto const & motif : motifs)
+//        {
+//            uint16_t const hitidx = motif.uid * bds.get_num_seq() + sidx;
+//            assert(hitidx < hits.size());
+//            std::cerr << "Seq. " << sidx << ":\tFound " << hits[hitidx].size() << " hits for motif " << +motif.uid;
+//            MotifScore sum = 0, min = 0, max = 0;
+//            for (auto const & hit : hits[hitidx])
+//            {
+//                sum += std::get<2>(hit);
+//                min = std::min(min, std::get<2>(hit));
+//                max = std::max(max, std::get<2>(hit));
+//            }
+//            std::cerr << ", \tscore average " << sum / hits[hitidx].size() << "";
+//            std::cerr << ", \tmin " << min << "";
+//            std::cerr << ", \tmax " << max << "\n";
+//        }
+//    }
+
+//    constexpr auto score_fn = [] (float score, size_t dist)
+//    {
+//        return score - (score * dist * dist / 900);
+//    };
+
+    #pragma omp parallel for num_threads(4)
+    for (uint16_t sidx = 0u; sidx < bds.get_num_seq(); ++sidx)
+    {
+        std::vector<Hit> const & hitvec = hits[sidx];
+        if (hitvec.empty())
+            continue;
+
+        auto left_end = hitvec.cbegin();
+        auto right_end = left_end;
+
+        do
+        {
+            std::vector<bool> diversity(num_motifs, false);
+            while (right_end != hitvec.cend() && right_end->pos <= left_end->pos + 30)
+            {
+                diversity[right_end->midx] = true;
+                ++right_end;
+            }
+            uint8_t div = 0;
+            for (bool b : diversity)
+                div += b ? 1 : 0;
+            if (right_end - left_end > 1 && div > 1)
+            {
+                #pragma omp critical (print)
+                {
+                    std::cerr << "Result " << sidx << ": ";
+                    for (auto it = left_end; it != right_end; ++it)
+                        std::cerr << "(" << +it->midx << "|" << it->pos << "," << it->score << ") ";
+                    std::cerr << std::endl;
+                }
+            }
+            ++left_end;
+            right_end = left_end;
+        } while (right_end != hitvec.cend());
     }
 }
 
