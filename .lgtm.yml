@@ -1,0 +1,69 @@
+##########################################################################################
+# Customize file classifications.                                                        #
+# Results from files under any classifier will be excluded from LGTM                     #
+# statistics.                                                                            #
+##########################################################################################
+
+##########################################################################################
+# Use the `path_classifiers` block to define changes to the default classification of    #
+# files.                                                                                 #
+##########################################################################################
+
+path_classifiers:
+  docs:
+    - doc
+
+  test:
+    - test
+
+  library:
+    - lib
+
+#########################################################################################
+# Use the `queries` block to change the default display of query results.               #
+#########################################################################################
+
+#queries:
+
+#########################################################################################
+# Define changes to the default code extraction process.                                #
+# Each block configures the extraction of a single language, and modifies actions in a  #
+# named step. Every named step includes automatic default actions,                      #
+# except for the 'prepare' step. The steps are performed in the following sequence:     #
+# prepare                                                                               #
+# after_prepare                                                                         #
+# configure (C/C++ only)                                                                #
+# python_setup (Python only)                                                            #
+# before_index                                                                          #
+# index                                                                                 #
+##########################################################################################
+
+#########################################################################################
+# Environment variables available to the steps:                                         #
+#########################################################################################
+
+# LGTM_SRC
+#   The root of the source tree.
+# LGTM_WORKSPACE
+#   An existing (initially empty) folder outside the source tree.
+#   Used for temporary download and setup commands.
+
+#########################################################################################
+# Use the extraction block to define changes to the default code extraction process     #
+# for one or more languages. The settings for each language are defined in a child      #
+# block, with one or more steps.                                                        #
+#########################################################################################
+
+extraction:
+  # Define settings for C/C++ analysis
+  #####################################
+  cpp:
+    prepare:
+      packages:
+        - libboost-all-dev
+    after_prepare:
+      - export GNU_MAKE=make
+      - export GIT=true
+    before_index:
+      - export BOOST_DIR=$LGTM_SRC/boost
+      - export GTEST_DIR=$LGTM_SRC/googletest
