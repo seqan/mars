@@ -15,6 +15,7 @@ public:
     std::filesystem::path alignment_file{};
     std::filesystem::path genome_file{};
     unsigned char xdrop{4};
+    unsigned int threads{1};
 
     bool parse_arguments(int argc, char ** argv, std::ostream & out);
 };

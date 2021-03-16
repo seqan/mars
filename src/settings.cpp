@@ -1,4 +1,5 @@
 #include <fstream>
+#include <thread>
 
 #include <seqan3/argument_parser/all.hpp>
 #include <seqan3/core/debug_stream.hpp>
@@ -14,7 +15,7 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
     parser.info.short_description = "Motif-based aligned RNA searcher";
     parser.info.author = "Jörg Winkler";
     parser.info.version = "1.0.0";
-    parser.info.date = "September 2020";
+    parser.info.date = "March 2021";
     parser.info.examples.emplace_back("./mars structural_rna.aln -g genome.fasta -o out.txt");
     parser.info.description.emplace_back("MaRs is a tool that reads a structural multiple RNA alignment "
                                          "(e.g. from LaRA) and derives fuzzy stem loop descriptors from it. "
@@ -30,6 +31,8 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
     parser.add_option(result_file, 'o', "output", "The output file for the results. If empty we print to stdout.");
     parser.add_option(xdrop, 'x', "xdrop", "The xdrop parameter (default 4). Smaller values increase speed "
                                            "but we will find less matches.");
+    parser.add_option(threads, 'j', "threads", "Use the number of specified threads. "
+                                               "Value 0 tries to detect the maximum number.");
 
     try
     {
@@ -39,6 +42,12 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
     {
         seqan3::debug_stream << "Parsing error. " << ext.what() << "\n"; // give error message
         return false;
+    }
+
+    if (threads == 0u)
+    {
+        unsigned int nthreads = std::thread::hardware_concurrency();
+        threads = nthreads != 0u ? nthreads : 1u;
     }
 
     std::ofstream file_stream{result_file};

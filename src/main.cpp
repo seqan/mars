@@ -39,7 +39,7 @@ int main(int argc, char ** argv)
     std::vector<mars::StemloopMotif> motifs = mars::detect_stemloops(structure.first, structure.second);
 
     // Create a structure motif for each stemloop
-    #pragma omp parallel for num_threads(2)
+    #pragma omp parallel for num_threads(settings.threads)
     for (size_t idx = 0; idx < motifs.size(); ++idx)
         motifs[idx].analyze(msa, structure.first);
 

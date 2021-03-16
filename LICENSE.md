@@ -1,6 +1,6 @@
 BSD 3-Clause License
 
-Copyright (c) 2020, Jörg Winkler
+Copyright (c) 2020-2021, Jörg Winkler and Knut Reinert, Freie Universität Berlin.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
