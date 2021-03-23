@@ -2,16 +2,10 @@
 #include <future>
 #include <vector>
 
-#ifdef MARS_WITH_OPENMP
-    #include <omp.h>
-#endif
-
 #include "index.hpp"
 #include "motif.hpp"
-#include "multiple_alignment.hpp"
 #include "search.hpp"
 #include "settings.hpp"
-#include "structure.hpp"
 
 int main(int argc, char ** argv)
 {
@@ -27,33 +21,18 @@ int main(int argc, char ** argv)
 
     // Start reading the genome and creating the index asyncronously
     mars::BiDirectionalIndex bds{settings.xdrop};
-    std::future<void> index_future = std::async(std::launch::async, &mars::BiDirectionalIndex::create, &bds, settings.genome_file);
+    std::future<void> index_future = std::async(std::launch::async, &mars::BiDirectionalIndex::create, &bds,
+                                                settings.genome_file);
 
-    // Read the alignment
-    mars::Msa msa = mars::read_msa(settings.alignment_file);
-
-    // Compute an alignment structure
-    auto structure = mars::compute_structure(msa);
-
-    // Find the stem loops
-    std::vector<mars::StemloopMotif> motifs = mars::detect_stemloops(structure.first, structure.second);
-
-    // Create a structure motif for each stemloop
-    #pragma omp parallel for num_threads(settings.threads)
-    for (size_t idx = 0; idx < motifs.size(); ++idx)
-        motifs[idx].analyze(msa, structure.first);
+    // Generate motifs from the MSA
+    std::vector<mars::StemloopMotif> motifs = mars::create_motifs(settings.alignment_file, settings.threads);
 
     // Wait for index creation process
     index_future.wait();
-    if (settings.genome_file.empty())
+
+    if (!motifs.empty() && !settings.genome_file.empty())
     {
-        for (auto & motif : motifs)
-            out << motif;
-    }
-    else
-    {
-        mars::SeqNum const depth = msa.sequences.size();
-        mars::SearchGenerator search{bds, depth};
+        mars::SearchGenerator search{bds, motifs.front().depth};
         search.find_motifs(motifs);
     }
 

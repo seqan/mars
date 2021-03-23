@@ -24,15 +24,23 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
                                          "accompanied with a quality value for each hit.");
 
     // Parser
-    parser.add_positional_option(alignment_file, "Alignment file of structurally aligned RNA sequences.",
-                                 seqan3::input_file_validator{{"msa", "aln", "fasta", "fa", "sth", "stk"}});
-    parser.add_option(genome_file, 'g', "genome", "A sequence file containing one or more sequences.");
+    parser.add_option(alignment_file, 'a', "alignment",
+                      "Alignment file of structurally aligned RNA sequences.",
+                      seqan3::option_spec::DEFAULT,
+                      seqan3::input_file_validator{{"msa", "aln", "fasta", "fa", "sth", "stk"}});
+
+    parser.add_option(genome_file, 'g', "genome",
+                      "A sequence file containing one or more sequences.");
+
     //output path as option, otherwise output is printed
-    parser.add_option(result_file, 'o', "output", "The output file for the results. If empty we print to stdout.");
-    parser.add_option(xdrop, 'x', "xdrop", "The xdrop parameter (default 4). Smaller values increase speed "
-                                           "but we will find less matches.");
-    parser.add_option(threads, 'j', "threads", "Use the number of specified threads. "
-                                               "Value 0 tries to detect the maximum number.");
+    parser.add_option(result_file, 'o', "output",
+                      "The output file for the results. If empty we print to stdout.");
+
+    parser.add_option(xdrop, 'x', "xdrop",
+                      "The xdrop parameter (default 4). Smaller values increase speed but we will find less matches.");
+
+    parser.add_option(threads, 'j', "threads",
+                      "Use the number of specified threads. Value 0 tries to detect the maximum number.");
 
     try
     {

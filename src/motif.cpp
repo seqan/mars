@@ -1,11 +1,17 @@
 #include <seqan3/std/ranges>
 #include <valarray>
 
+#ifdef MARS_WITH_OPENMP
+    #include <omp.h>
+#endif
+
 #include <seqan3/range/views/deep.hpp>
 #include <seqan3/range/views/slice.hpp>
 #include <seqan3/range/views/zip.hpp>
 
 #include "motif.hpp"
+#include "multiple_alignment.hpp"
+#include "structure.hpp"
 
 namespace mars
 {
@@ -66,6 +72,28 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
         }
     }
     return std::move(stemloops);
+}
+
+std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment_file, unsigned int threads)
+{
+    if (alignment_file.empty())
+        return {};
+
+    // Read the alignment
+    Msa msa = read_msa(alignment_file);
+
+    // Compute an alignment structure
+    auto structure = compute_structure(msa);
+
+    // Find the stem loops
+    std::vector<StemloopMotif> motifs = detect_stemloops(structure.first, structure.second);
+
+    // Create a structure motif for each stemloop
+    #pragma omp parallel for num_threads(threads)
+    for (size_t idx = 0; idx < motifs.size(); ++idx)
+        motifs[idx].analyze(msa, structure.first);
+
+    return std::move(motifs);
 }
 
 // private helper function for analyze

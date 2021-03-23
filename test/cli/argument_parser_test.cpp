@@ -16,25 +16,20 @@ TEST_F(argument_parser_test, no_options)
     };
     EXPECT_EQ(result.exit_code, 0);
     EXPECT_EQ(result.out, expected);
-    EXPECT_EQ(result.err, std::string{});
+    EXPECT_EQ(result.err, "");
 }
 
-//TEST_F(argument_parser_test, fail_no_argument)
-//{
-//    cli_test_result result = execute_app("mars", "-o", data("out.aln"));
-//    std::string expected
-//    {
-//        "Parsing error. Not enough positional arguments provided (Need at least 1). "
-//        "See -h/--help for more information.\n"
-//    };
-//    EXPECT_NE(result.exit_code, 0);
-//    EXPECT_EQ(result.out, std::string{});
-//    EXPECT_EQ(result.err, expected);
-//}
+TEST_F(argument_parser_test, fail_positional_argument)
+{
+    cli_test_result result = execute_app("mars", data("out.aln"));
+    EXPECT_NE(result.exit_code, 0);
+    EXPECT_EQ(result.out, "");
+    EXPECT_EQ(result.err, "Parsing error. Too many arguments provided. Please see -h/--help for more information.\n");
+}
 
-//TEST_F(argument_parser_test, with_argument)
+//TEST_F(argument_parser_test, with_alignment)
 //{
-//    cli_test_result result = execute_app("mars", data("tRNA.aln"));
+//    cli_test_result result = execute_app("mars", "-a", data("tRNA.aln"));
 //    EXPECT_EQ(result.exit_code, 0);
 //    EXPECT_EQ(result.out, "> seq1\nACGTTTGATTCGCG\n> seq2\nTCGGGGGATTCGCG\n");
 //    EXPECT_EQ(result.err, std::string{});

@@ -113,6 +113,14 @@ struct StemloopMotif
 std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif);
 
 /*!
+ * \brief Create the motif descriptors by analysing a multiple sequence-structure alignment.
+ * \param alignment_file The filepath containing the MSA.
+ * \param threads The maximum number of threads allowed for execution.
+ * \return A vector of motifs.
+ */
+std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment_file, unsigned int threads);
+
+/*!
  * \brief Extract the positions of the stem loops.
  * \param bpseq The base pairing at each position.
  * \param plevel The pseudoknot level at each position.
