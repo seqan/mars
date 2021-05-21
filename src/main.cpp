@@ -1,5 +1,6 @@
 #include <chrono>
 #include <future>
+#include <iostream>
 #include <vector>
 
 #include "index.hpp"
@@ -35,9 +36,16 @@ int main(int argc, char ** argv)
         mars::SearchGenerator search{bds, motifs.front().depth};
         search.find_motifs(motifs);
     }
+    else if (mars::verbose > 0)
+    {
+        std::cerr << "Search step skipped, because there are no motifs, or no genome is provided." << std::endl;
+    }
 
-    auto const & sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
-    std::cerr << "Run time " << sec << " seconds.\n";
+    if (mars::verbose > 0)
+    {
+        auto const & sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
+        std::cerr << argv[0] << " has finished after " << sec << " seconds." << std::endl;
+    }
 
     return 0;
 }

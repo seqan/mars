@@ -78,6 +78,7 @@ add_library (IPknot STATIC lib/ipknot/aln.cpp lib/ipknot/fold.cpp lib/ipknot/ip.
 target_include_directories (IPknot SYSTEM PUBLIC lib/ipknot)
 target_link_libraries (IPknot PUBLIC Contrafold Nupack)
 target_compile_definitions (IPknot PRIVATE "-DHAVE_LIBRNA" PRIVATE "-DHAVE_VIENNA20")
+target_compile_options(IPknot PRIVATE "-w")
 if (ViennaRNA_FOUND)
     target_include_directories (IPknot SYSTEM PUBLIC ${ViennaRNA_INCLUDE_DIRS})
     target_link_libraries (IPknot PUBLIC ${ViennaRNA_LDFLAGS})

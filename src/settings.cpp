@@ -9,6 +9,8 @@
 namespace mars
 {
 
+unsigned short verbose{0};
+
 bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
 {
     seqan3::argument_parser parser{"mars", argc, argv};
@@ -41,6 +43,9 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
 
     parser.add_option(threads, 'j', "threads",
                       "Use the number of specified threads. Value 0 tries to detect the maximum number.");
+
+    parser.add_option(verbose, 'v', "verbose",
+                      "Level of printing status information.");
 
     try
     {

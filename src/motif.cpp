@@ -1,3 +1,4 @@
+#include <iostream>
 #include <seqan3/std/ranges>
 #include <valarray>
 
@@ -11,6 +12,7 @@
 
 #include "motif.hpp"
 #include "multiple_alignment.hpp"
+#include "settings.hpp"
 #include "structure.hpp"
 
 namespace mars
@@ -93,6 +95,8 @@ std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment
     for (size_t idx = 0; idx < motifs.size(); ++idx)
         motifs[idx].analyze(msa, structure.first);
 
+    if (verbose > 0)
+        std::cerr << "Found " << motifs.size() << " stem loops in " << alignment_file << std::endl;
     return std::move(motifs);
 }
 

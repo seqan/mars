@@ -34,6 +34,6 @@ void write_index(Index const & index, uint16_t index_num_seq, std::filesystem::p
  * \param[in] indexpath The path of the index input file.
  * \return whether an index could be parsed.
  */
-bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path const & indexpath);
+bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path & indexpath);
 
 } // namespace mars

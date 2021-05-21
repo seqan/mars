@@ -2,9 +2,10 @@
 
 #include <seqan3/std/filesystem>
 
-
 namespace mars
 {
+
+extern unsigned short verbose;
 
 struct Settings
 {

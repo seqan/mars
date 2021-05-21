@@ -53,7 +53,7 @@ void write_index(Index const & index, uint16_t index_num_seq, std::filesystem::p
     ofs.close();
 }
 
-bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path const & indexpath)
+bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path & indexpath)
 {
     bool success = false;
 #ifdef SEQAN3_HAS_ZLIB
@@ -72,6 +72,7 @@ bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path c
             iarchive(index);
             iarchive(index_num_seq);
             success = true;
+            indexpath = gzindexpath;
         }
         ifs.close();
     }

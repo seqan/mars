@@ -1,7 +1,10 @@
+#include <iostream>
+
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/search/search.hpp>
 
 #include "index.hpp"
+#include "settings.hpp"
 
 namespace mars
 {
@@ -18,6 +21,8 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     if (read_index(index, index_num_seq, indexpath))
     {
         cursors.emplace_back(index);
+        if (verbose > 0)
+            std::cerr << "Using existing index file: " << indexpath << std::endl;
         return;
     }
 
@@ -30,6 +35,8 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
         index_num_seq = seqs.size();
         cursors.emplace_back(index);
         write_index(index, index_num_seq, indexpath);
+        if (verbose > 0)
+            std::cerr << "Read genome from " << filepath << "\nCreate index file " << indexpath << std::endl;
     }
     else
     {
