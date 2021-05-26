@@ -29,16 +29,31 @@ int main(int argc, char ** argv)
     std::vector<mars::StemloopMotif> motifs = mars::create_motifs(settings.alignment_file, settings.threads);
 
     // Wait for index creation process
-    index_future.wait();
+    try
+    {
+        index_future.get();
+    }
+    catch (std::exception const & e)
+    {
+        std::cerr << "EXCEPTION => " << e.what() << "\n";
+        return EXIT_FAILURE;
+    }
 
     if (!motifs.empty() && !settings.genome_file.empty())
     {
         mars::SearchGenerator search{bds, motifs.front().depth};
         search.find_motifs(motifs);
+        out << " " << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
+            << "pos" << "\t" << "n" << "\t" << "score" << std::endl;
+        for (mars::MotifLocation const & loc : search.get_locations())
+        {
+            out << ">" << std::left << std::setw(35) << bds.get_name(loc.sequence) << "\t" << loc.sequence << "\t"
+                << loc.position << "\t" << +loc.num_stemloops << "\t" << loc.score << std::endl;
+        }
     }
-    else if (mars::verbose > 0)
+    else if (motifs.empty() && mars::verbose > 0)
     {
-        std::cerr << "Search step skipped, because there are no motifs, or no genome is provided." << std::endl;
+        std::cerr << "There are no motifs: skipping search step." << std::endl;
     }
 
     if (mars::verbose > 0)

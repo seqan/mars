@@ -37,7 +37,7 @@ TEST(Index, BiDirectionalIndex)
     using seqan3::operator""_rna4;
 
     mars::BiDirectionalIndex bds(4);
-    bds.create(data("RF0005.fa"));
+    bds.create(data("RF00005.fa"));
     mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
 
     EXPECT_TRUE(bds.append_loop({1.f, 'A'_rna4}, false));

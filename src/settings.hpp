@@ -1,6 +1,7 @@
 #pragma once
 
 #include <seqan3/std/filesystem>
+#include <fstream>
 
 namespace mars
 {
@@ -11,6 +12,7 @@ struct Settings
 {
 private:
     std::filesystem::path result_file{};
+    std::ofstream file_stream{};
 
 public:
     std::filesystem::path alignment_file{};

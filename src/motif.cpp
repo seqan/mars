@@ -96,7 +96,12 @@ std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment
         motifs[idx].analyze(msa, structure.first);
 
     if (verbose > 0)
+    {
         std::cerr << "Found " << motifs.size() << " stem loops in " << alignment_file << std::endl;
+        if (verbose > 1)
+            for (auto const & motif : motifs)
+                std::cerr << motif << std::endl;
+    }
     return std::move(motifs);
 }
 

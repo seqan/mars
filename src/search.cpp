@@ -5,6 +5,7 @@
 #endif
 
 #include "search.hpp"
+#include "settings.hpp"
 
 namespace mars
 {
@@ -69,9 +70,14 @@ void SearchGenerator::recurse_search(StemloopMotif const & motif, ElementIter co
 
 void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
 {
+    if (mars::verbose > 0)
+        std::cerr << "Start the motif search...";
     assert(motifs.size() <= UINT8_MAX);
     uint8_t const num_motifs = motifs.size();
-    hits.resize(bds.get_num_seq());
+    hits.resize(bds.number_of_seq());
+
+    for (auto const & motif : motifs)
+        bds.update_max_offset(motif.bounds.first);
 
 //    #pragma omp parallel for num_threads(2)
     for (uint8_t midx = 0; midx < num_motifs; ++midx)
@@ -80,11 +86,14 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
         // start with the hairpin
         auto const iter = motif.elements.crbegin();
         recurse_search<LoopElement>(motif, iter, 0);
-        std::cerr << motif << std::endl;
+        if (verbose > 0)
+            std::cerr << "  " << (100*(midx+1)/num_motifs) << "%";
     }
+    if (verbose > 0)
+        std::cerr << std::endl;
 
     #pragma omp parallel for num_threads(4)
-    for (uint16_t sidx = 0u; sidx < bds.get_num_seq(); ++sidx)
+    for (size_t sidx = 0u; sidx < bds.number_of_seq(); ++sidx)
         std::sort(hits[sidx].begin(), hits[sidx].end(), [] (Hit const & a, Hit const & b)
         {
             if (a.pos != b.pos)
@@ -94,33 +103,9 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
             return a.score < b.score;
         });
 
-//    for (uint16_t sidx = 0; sidx < bds.get_num_seq(); ++ sidx)
-//    {
-//        for (auto const & motif : motifs)
-//        {
-//            uint16_t const hitidx = motif.uid * bds.get_num_seq() + sidx;
-//            assert(hitidx < hits.size());
-//            std::cerr << "Seq. " << sidx << ":\tFound " << hits[hitidx].size() << " hits for motif " << +motif.uid;
-//            MotifScore sum = 0, min = 0, max = 0;
-//            for (auto const & hit : hits[hitidx])
-//            {
-//                sum += std::get<2>(hit);
-//                min = std::min(min, std::get<2>(hit));
-//                max = std::max(max, std::get<2>(hit));
-//            }
-//            std::cerr << ", \tscore average " << sum / hits[hitidx].size() << "";
-//            std::cerr << ", \tmin " << min << "";
-//            std::cerr << ", \tmax " << max << "\n";
-//        }
-//    }
-
-//    constexpr auto score_fn = [] (float score, size_t dist)
-//    {
-//        return score - (score * dist * dist / 900);
-//    };
-
-    #pragma omp parallel for num_threads(4)
-    for (uint16_t sidx = 0u; sidx < bds.get_num_seq(); ++sidx)
+    size_t num_results = 0;
+//    #pragma omp parallel for num_threads(4)
+    for (size_t sidx = 0u; sidx < bds.number_of_seq(); ++sidx)
     {
         std::vector<Hit> const & hitvec = hits[sidx];
         if (hitvec.empty())
@@ -131,29 +116,50 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
 
         do
         {
-            std::vector<bool> diversity(num_motifs, false);
+            std::vector<float> max_score(num_motifs, 0.f);
+            std::vector<Hit> selection{};
             while (right_end != hitvec.cend() && right_end->pos <= left_end->pos + 30)
             {
-                diversity[right_end->midx] = true;
+                selection.push_back(*right_end);
                 ++right_end;
             }
-            uint8_t div = 0;
-            for (bool b : diversity)
-                div += b ? 1 : 0;
-            if (right_end - left_end > 1 && div > 1)
+            std::sort(selection.begin(), selection.end(), [] (Hit const & a, Hit const & b)
             {
-                #pragma omp critical (print)
-                {
-                    std::cerr << "Result " << sidx << ": ";
-                    for (auto it = left_end; it != right_end; ++it)
-                        std::cerr << "(" << +it->midx << "|" << it->pos << "," << it->score << ") ";
-                    std::cerr << std::endl;
-                }
+                if (a.midx != b.midx)
+                    return a.midx < b.midx;
+                return a.score > b.score;
+            });
+            long long base_pos = static_cast<long long>(selection.begin()->pos);
+            for (Hit & hit : selection)
+            {
+                int pos_diff = static_cast<int>(hit.pos - base_pos);
+                hit.score = static_cast<float>(std::max(0.0, hit.score - (0.05 * pos_diff * pos_diff)));
+                max_score[hit.midx] = std::max(max_score[hit.midx], hit.score);
             }
-            ++left_end;
-            right_end = left_end;
+
+            uint8_t diversity = 0; // number of different motifs found
+            float hit_score = 0;
+            for (float score : max_score)
+            {
+                diversity += score > 0.f ? 1 : 0;
+                hit_score += score;
+            }
+
+            base_pos -= static_cast<long long>(bds.get_max_offset());
+
+            if (diversity > 1)
+            {
+                locations.emplace(hit_score, diversity, base_pos, sidx);
+//                std::cout << ">" << std::left << std::setw(35) << bds.get_name(sidx) << "\t" << sidx << "\t"
+//                          << base_pos << "\t" << +diversity << "\t" << hit_score << std::endl;
+                ++num_results;
+            }
+
+            left_end = right_end;
         } while (right_end != hitvec.cend());
     }
+    if (verbose > 1)
+        std::cerr << "Found " << num_results << " matches." << std::endl;
 }
 
 } // namespace mars

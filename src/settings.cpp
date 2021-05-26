@@ -1,4 +1,3 @@
-#include <fstream>
 #include <thread>
 
 #include <seqan3/argument_parser/all.hpp>
@@ -62,8 +61,10 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
         unsigned int nthreads = std::thread::hardware_concurrency();
         threads = nthreads != 0u ? nthreads : 1u;
     }
+    if (verbose > 0)
+        std::cerr << "Number of threads: " << threads << std::endl;
 
-    std::ofstream file_stream{result_file};
+    file_stream.rdbuf()->open(result_file, std::ios_base::out);
     if (!result_file.empty())
         out.rdbuf(file_stream.rdbuf());
 

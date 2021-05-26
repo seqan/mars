@@ -12,14 +12,14 @@ declare_datasource (FILE genome.fa
                     URL ${CMAKE_SOURCE_DIR}/test/data/genome.fa)
 
 declare_datasource (FILE genome2.fa.marsindex
-                    URL_HASH MD5=385e699d95b7e6ee6b5f33249b87dab9
+                    URL_HASH MD5=71457b32526a25fb0228a9fe152ee00b
                     URL ${CMAKE_SOURCE_DIR}/test/data/genome2.fa.marsindex)
 
 declare_datasource (FILE genome3.fa.marsindex.gz
-                    URL_HASH MD5=1e990d55f067fc95debd748d32953242
+                    URL_HASH MD5=63cd20d19c9d30051203c6c049c4146d
                     URL ${CMAKE_SOURCE_DIR}/test/data/genome3.fa.marsindex.gz)
 
-declare_datasource (FILE RF0005.fa.marsindex
-                    URL_HASH MD5=e0a6cb45c2ec8b50fd97bbe8aa56ddb5
-                    URL ${CMAKE_SOURCE_DIR}/test/data/RF0005.fa.marsindex)
+declare_datasource (FILE RF00005.fa.marsindex
+                    URL_HASH MD5=26253dc665c78c6b80dc7a9024358bfd
+                    URL ${CMAKE_SOURCE_DIR}/test/data/RF00005.fa.marsindex)
 

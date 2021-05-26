@@ -7,7 +7,7 @@ target_use_datasources (index_test FILES
         genome.fa
         genome2.fa.marsindex
         genome3.fa.marsindex.gz
-        RF0005.fa.marsindex
+        RF00005.fa.marsindex
 )
 
 add_api_test (input_test.cpp)

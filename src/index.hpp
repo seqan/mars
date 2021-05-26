@@ -32,14 +32,17 @@ private:
     //! \brief The index in which the search is performed.
     Index index;
 
-    //! \brief The number of sequences in the index.
-    uint16_t index_num_seq;
+    //! \brief The names of the sequences in the index.
+    std::vector<std::string> names;
 
     //! \brief The history of cursors (needed for backtracking).
     std::vector<seqan3::bi_fm_index_cursor<Index>> cursors;
 
     //! \brief The history of scores;
     std::vector<float> scores;
+
+    //! \brief The maximum possible motif offset.
+    size_t max_offset;
 
     //! \brief The xdrop parameter.
     unsigned char const xdrop_dist;
@@ -51,9 +54,10 @@ public:
      */
     explicit BiDirectionalIndex(unsigned char xdrop):
         index{},
-        index_num_seq{},
+        names{},
         cursors{},
         scores{},
+        max_offset{},
         xdrop_dist{xdrop}
     {
         scores.emplace_back(0);
@@ -107,12 +111,41 @@ public:
     void compute_hits(std::vector<std::vector<Hit>> & hits, StemloopMotif const & motif) const;
 
     /*!
+     * \brief Access a sequence name.
+     * \param idx The position of the sequence.
+     * \return the name of the queried sequence.
+     */
+    std::string const & get_name(size_t idx) const
+    {
+        return names[idx];
+    }
+
+    /*!
      * \brief Access the number of sequences in the index.
      * \return the number of sequences
      */
-    uint16_t get_num_seq() const
+    size_t number_of_seq() const
     {
-        return index_num_seq;
+        return names.size();
+    }
+
+    /*!
+     * \brief Update the maximum offset of the motif.
+     * \param new_offset The proposed new offset value that is used if it is larger.
+     */
+    void update_max_offset(size_t new_offset)
+    {
+        if (new_offset > max_offset)
+            max_offset = new_offset;
+    }
+
+    /*!
+     * \brief Retrieve the maximum positional offset of the motif.
+     * \return the maximum offset of the motif.
+     */
+    size_t get_max_offset() const
+    {
+        return max_offset;
     }
 };
 

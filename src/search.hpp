@@ -61,6 +61,31 @@ struct BackgroundDistribution
     }
 };
 
+struct MotifLocation
+{
+    float score;
+    uint8_t num_stemloops;
+    long long position;
+    size_t sequence;
+
+    MotifLocation(float s, uint8_t n, long long p, size_t i):
+        score{s}, num_stemloops{n}, position{p}, sequence{i}
+    {}
+};
+
+struct MotifLocationCompare {
+    bool operator()(MotifLocation const & a, MotifLocation const & b) const
+    {
+        if (a.score != b.score)
+            return a.score > b.score;
+        if (a.num_stemloops != b.num_stemloops)
+            return a.num_stemloops > b.num_stemloops;
+        if (a.sequence != b.sequence)
+            return a.sequence < b.sequence;
+        return a.position < b.position;
+    }
+};
+
 class SearchGenerator
 {
 private:
@@ -70,6 +95,7 @@ private:
     std::vector<std::vector<Hit>> hits;
     MotifScore const log_depth;
     BackgroundDistribution const background_distr;
+    std::set<MotifLocation, MotifLocationCompare> locations;
 
     template <typename MotifElement>
     void recurse_search(StemloopMotif const & motif, ElementIter const & elem_it, MotifLen idx);
@@ -82,10 +108,16 @@ public:
         bds{bds},
         hits{},
         log_depth{log2f(depth)},
-        background_distr{}
+        background_distr{},
+        locations{}
     {}
 
     void find_motifs(std::vector<StemloopMotif> const & motifs);
+
+    std::set<MotifLocation, MotifLocationCompare> const & get_locations() const
+    {
+        return locations;
+    }
 };
 
 } // namespace mars

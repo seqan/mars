@@ -31,8 +31,8 @@ struct MultipleAlignment
  */
 typedef MultipleAlignment<seqan3::rna15> Msa;
 
-//! \brief Type for sequence id. We expect to have less than 65k sequences.
-using SeqNum = uint16_t;
+//! \brief Type for sequence id. We expect to have less than 4G sequences.
+using SeqNum = size_t;
 
 //! \brief Type for positions within a sequence.
 using SeqLen = size_t;

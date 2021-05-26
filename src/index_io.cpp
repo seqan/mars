@@ -11,23 +11,25 @@
 namespace mars
 {
 
-std::vector<seqan3::dna4_vector> read_genome(std::filesystem::path const & filepath)
+void read_genome(std::vector<seqan3::dna4_vector> & seqs,
+                 std::vector<std::string> & names,
+                 std::filesystem::path const & filepath)
 {
-    std::vector<seqan3::dna4_vector> seqs{};
-
     struct dna4_traits : seqan3::sequence_file_input_default_traits_dna
     {
         using sequence_alphabet = seqan3::dna4;
         using sequence_legal_alphabet = seqan3::dna15;
     };
+    typedef seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::seq, seqan3::field::id>> SeqInput;
 
-    for (auto & [seq] : seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::seq>>{filepath})
+    for (auto & [seq, name] : SeqInput{filepath})
+    {
         seqs.push_back(std::move(seq));
-
-    return std::move(seqs);
+        names.push_back(std::move(name));
+    }
 }
 
-void write_index(Index const & index, uint16_t index_num_seq, std::filesystem::path & indexpath)
+void write_index(Index const & index, std::vector<std::string> const & names, std::filesystem::path & indexpath)
 {
 #ifdef SEQAN3_HAS_ZLIB
     indexpath += ".gz";
@@ -45,7 +47,7 @@ void write_index(Index const & index, uint16_t index_num_seq, std::filesystem::p
         std::string const version{"1 mars bi_fm_index<dna4,collection>\n"};
         oarchive(version);
         oarchive(index);
-        oarchive(index_num_seq);
+        oarchive(names);
 #ifdef SEQAN3_HAS_ZLIB
         gzstream.flush();
 #endif
@@ -53,7 +55,7 @@ void write_index(Index const & index, uint16_t index_num_seq, std::filesystem::p
     ofs.close();
 }
 
-bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path & indexpath)
+bool read_index(Index & index, std::vector<std::string> & names, std::filesystem::path & indexpath)
 {
     bool success = false;
 #ifdef SEQAN3_HAS_ZLIB
@@ -70,7 +72,7 @@ bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path &
             iarchive(version);
             assert(version[0] == '1');
             iarchive(index);
-            iarchive(index_num_seq);
+            iarchive(names);
             success = true;
             indexpath = gzindexpath;
         }
@@ -87,7 +89,7 @@ bool read_index(Index & index, uint16_t & index_num_seq, std::filesystem::path &
             iarchive(version);
             assert(version[0] == '1');
             iarchive(index);
-            iarchive(index_num_seq);
+            iarchive(names);
             success = true;
         }
         ifs.close();

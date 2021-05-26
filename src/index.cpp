@@ -18,7 +18,7 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     indexpath += ".marsindex";
 
     // Check whether an index already exists.
-    if (read_index(index, index_num_seq, indexpath))
+    if (read_index(index, names, indexpath))
     {
         cursors.emplace_back(index);
         if (verbose > 0)
@@ -29,14 +29,18 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     // No index found: read genome and create an index.
     if (std::filesystem::exists(filepath))
     {
-        // Generate the BiFM index.
-        std::vector<std::vector<seqan3::dna4>> seqs = read_genome(filepath);
-        index = Index{seqs};
-        index_num_seq = seqs.size();
-        cursors.emplace_back(index);
-        write_index(index, index_num_seq, indexpath);
         if (verbose > 0)
-            std::cerr << "Read genome from " << filepath << "\nCreate index file " << indexpath << std::endl;
+            std::cerr << "Read genome from " << filepath << std::endl;
+        std::vector<seqan3::dna4_vector> seqs{};
+        read_genome(seqs, names, filepath);
+        // Generate the BiFM index.
+        if (verbose > 0)
+            std::cerr << "Create index... ";
+        index = Index{seqs};
+        cursors.emplace_back(index);
+        write_index(index, names, indexpath);
+        if (verbose > 0)
+            std::cerr << indexpath << std::endl;
     }
     else
     {
@@ -65,7 +69,6 @@ bool BiDirectionalIndex::append_loop(std::pair<float, seqan3::rna4> item, bool l
         cursors.push_back(new_cur);
         scores.push_back(scores.back() + item.first);
     }
-
     return succ;
 }
 
@@ -105,9 +108,12 @@ bool BiDirectionalIndex::xdrop() const
 void BiDirectionalIndex::compute_hits(std::vector<std::vector<Hit>> & hits, StemloopMotif const & motif) const
 {
     for (auto && [seq, pos] : cursors.back().locate())
-        hits[seq].emplace_back(pos >= motif.bounds.first ? pos - motif.bounds.first : 0,
+    {
+        assert(seq < hits.size());
+        hits[seq].emplace_back(pos + max_offset - motif.bounds.first,
                                motif.uid,
                                scores.back());
+    }
 }
 
 } // namespace mars
