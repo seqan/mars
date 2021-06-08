@@ -87,7 +87,7 @@ bin/mars --help
 
 ## Authorship & Copyright
 
-LaRA 2 is being developed by [Jörg Winkler](mailto:j.winkler@fu-berlin.de), but it incorporates a lot of work
+MaRs is being developed by [Jörg Winkler](mailto:j.winkler@fu-berlin.de), but it incorporates a lot of work
 from other members of the [SeqAn project](http://www.seqan.de).
 
 You can ask questions and report bugs on the [GitHub tracker](https://github.com/seqan/mars/issues).
