@@ -20,9 +20,10 @@ void read_genome(std::vector<seqan3::dna4_vector> & seqs,
         using sequence_alphabet = seqan3::dna4;
         using sequence_legal_alphabet = seqan3::dna15;
     };
-    typedef seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::seq, seqan3::field::id>> SeqInput;
+    seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::seq, seqan3::field::id>> reader{filepath};
+    reader.options.truncate_ids = true;
 
-    for (auto & [seq, name] : SeqInput{filepath})
+    for (auto & [seq, name] : reader)
     {
         seqs.push_back(std::move(seq));
         names.push_back(std::move(name));
