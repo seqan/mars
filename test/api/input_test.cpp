@@ -7,8 +7,9 @@
 
 #include <seqan3/alphabet/gap/gapped.hpp>
 #include <seqan3/alphabet/nucleotide/rna15.hpp>
+#include <seqan3/alphabet/views/char_to.hpp>
+#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/exception.hpp>
-#include <seqan3/range/views/char_to.hpp>
 #include <seqan3/test/expect_range_eq.hpp>
 
 #include "multiple_alignment.hpp"

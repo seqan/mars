@@ -6,9 +6,9 @@
     #include <omp.h>
 #endif
 
-#include <seqan3/range/views/deep.hpp>
-#include <seqan3/range/views/slice.hpp>
-#include <seqan3/range/views/zip.hpp>
+#include <seqan3/utility/views/deep.hpp>
+#include <seqan3/utility/views/slice.hpp>
+#include <seqan3/utility/views/zip.hpp>
 
 #include "motif.hpp"
 #include "multiple_alignment.hpp"

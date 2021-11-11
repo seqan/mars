@@ -1,8 +1,8 @@
 #include <seqan3/std/algorithm>
 #include <seqan3/std/iterator>
 
-#include <seqan3/range/views/to_char.hpp>
-#include <seqan3/range/views/zip.hpp>
+#include <seqan3/alphabet/views/to_char.hpp>
+#include <seqan3/utility/views/zip.hpp>
 
 #include "structure.hpp"
 

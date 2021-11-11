@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <seqan3/alphabet/nucleotide/all.hpp>
+#include <seqan3/core/debug_stream.hpp>
 
 #include <unit/alphabet/semi_alphabet_test_template.hpp>
 #include <unit/alphabet/semi_alphabet_constexpr_test_template.hpp>

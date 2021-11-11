@@ -10,17 +10,14 @@
 #include <seqan3/alphabet/gap/gapped.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
 #include <seqan3/alphabet/nucleotide/rna15.hpp>
-//#include <seqan3/core/debug_stream/detail/to_string.hpp>
+#include <seqan3/alphabet/views/char_to.hpp>
+#include <seqan3/core/range/detail/misc.hpp>
 #include <seqan3/io/exception.hpp>
-#include <seqan3/range/detail/misc.hpp>
-#include <seqan3/range/views/char_to.hpp>
-#include <seqan3/range/views/istreambuf.hpp>
-#include <seqan3/range/views/take_exactly.hpp>
-#include <seqan3/range/views/take_line.hpp>
-#include <seqan3/range/views/type_reduce.hpp>
-#include <seqan3/range/views/zip.hpp>
-//#include <seqan3/utility/char_operations/predicate.hpp>
-//#include <seqan3/utility/detail/type_name_as_string.hpp>
+#include <seqan3/io/views/detail/istreambuf_view.hpp>
+#include <seqan3/io/views/detail/take_exactly_view.hpp>
+#include <seqan3/io/views/detail/take_line_view.hpp>
+#include <seqan3/utility/views/type_reduce.hpp>
+#include <seqan3/utility/views/zip.hpp>
 
 #include "multiple_alignment.hpp"
 
@@ -52,16 +49,16 @@ MultipleAlignment<alphabet_type> read_clustal_file(std::istream & stream)
         return c;
     };
 
-    auto stream_view = seqan3::views::istreambuf(stream);
+    auto stream_view = seqan3::detail::istreambuf(stream);
 
     // skip initial whitespace and check if file starts with "CLUSTAL"
-    seqan3::detail::consume(stream_view | seqan3::views::take_until(!seqan3::is_space));
-    if (!std::ranges::equal(stream_view | seqan3::views::take_exactly_or_throw(7), std::string{"CLUSTAL"}))
+    seqan3::detail::consume(stream_view | seqan3::detail::take_until(!seqan3::is_space));
+    if (!std::ranges::equal(stream_view | seqan3::detail::take_exactly_or_throw(7), std::string{"CLUSTAL"}))
         throw seqan3::parse_error{"Expected to read 'CLUSTAL' in the beginning of the file."};
 
     // skip rest of the line and go to the first block
-    seqan3::detail::consume(stream_view | seqan3::views::take_line);
-    seqan3::detail::consume(stream_view | seqan3::views::take_until(!seqan3::is_space));
+    seqan3::detail::consume(stream_view | seqan3::detail::take_line);
+    seqan3::detail::consume(stream_view | seqan3::detail::take_until(!seqan3::is_space));
 
     std::size_t idx = 0;
     bool first_block = true;
@@ -70,7 +67,7 @@ MultipleAlignment<alphabet_type> read_clustal_file(std::istream & stream)
     {
         // parse the sequence name
         std::string name{};
-        std::ranges::copy(stream_view | seqan3::views::take_until_or_throw(seqan3::is_blank),
+        std::ranges::copy(stream_view | seqan3::detail::take_until_or_throw(seqan3::is_blank),
                           std::cpp20::back_inserter(name));
 
         if (!msa.names.empty() && name == msa.names.front())
@@ -94,24 +91,24 @@ MultipleAlignment<alphabet_type> read_clustal_file(std::istream & stream)
                 throw seqan3::parse_error{"Expected to read '" + msa.names[idx] + "' in the input file."};
         }
         // go to the beginning of sequence
-        seqan3::detail::consume(stream_view | seqan3::views::take_until_or_throw(!seqan3::is_blank));
+        seqan3::detail::consume(stream_view | seqan3::detail::take_until_or_throw(!seqan3::is_blank));
 
         // copy the sequence
-        std::ranges::copy(stream_view | seqan3::views::take_until_or_throw(seqan3::is_space)
+        std::ranges::copy(stream_view | seqan3::detail::take_until_or_throw(seqan3::is_space)
                           | std::views::filter(!seqan3::is_digit)
                           | std::views::transform(check_legal_alphabet)
                           | seqan3::views::char_to<seqan3::gapped<alphabet_type>>,
                           std::cpp20::back_inserter(msa.sequences[idx]));
 
         // go to the next line
-        seqan3::detail::consume(stream_view | seqan3::views::take_line);
+        seqan3::detail::consume(stream_view | seqan3::detail::take_line);
 
         // consume line if it starts with whitespace
         if (seqan3::is_space(*stream_view.begin()))
-            seqan3::detail::consume(stream_view | seqan3::views::take_line);
+            seqan3::detail::consume(stream_view | seqan3::detail::take_line);
 
         // move to the next sequence name or find EOF
-        seqan3::detail::consume(stream_view | seqan3::views::take_until(seqan3::is_eof || (!seqan3::is_space)));
+        seqan3::detail::consume(stream_view | seqan3::detail::take_until(seqan3::is_eof || (!seqan3::is_space)));
         ++idx;
     } while (std::istreambuf_iterator<char>{stream} != std::istreambuf_iterator<char>{});
 
