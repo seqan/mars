@@ -107,12 +107,12 @@ public:
     SearchGenerator(BiDirectionalIndex & bds, SeqNum depth) :
         bds{bds},
         hits{},
-        log_depth{log2f(depth)},
+        log_depth{log2f(static_cast<float>(depth))},
         background_distr{},
         locations{}
     {}
 
-    void find_motifs(std::vector<StemloopMotif> const & motifs);
+    void find_motifs(std::vector<StemloopMotif> const & motifs, unsigned threads, float min_score);
 
     std::set<MotifLocation, MotifLocationCompare> const & get_locations() const
     {

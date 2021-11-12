@@ -16,9 +16,9 @@ inline std::set<std::pair<MotifScore, Alphabet>> SearchGenerator::priority(profi
     std::set<std::pair<MotifScore, Alphabet>> result{};
 
     auto const & quantities = prof.log_quantities();
-    auto const & bg = background_distr.get<seqan3::alphabet_size<Alphabet>>();
+    auto const & bgd = background_distr.get<seqan3::alphabet_size<Alphabet>>();
 
-    for (auto && [idx, score, bg] : seqan3::views::zip(std::ranges::views::iota(0), quantities, bg))
+    for (auto && [idx, score, bg] : seqan3::views::zip(std::ranges::views::iota(0), quantities, bgd))
         if (score - bg - log_depth >= -2.f)
             result.emplace(score - bg - log_depth, Alphabet{}.assign_rank(idx));
 
@@ -68,7 +68,7 @@ void SearchGenerator::recurse_search(StemloopMotif const & motif, ElementIter co
         recurse_search<MotifElement>(motif, elem_it, idx + len);
 }
 
-void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
+void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, unsigned threads, float min_score)
 {
     if (mars::verbose > 0)
         std::cerr << "Start the motif search...";
@@ -79,7 +79,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
     for (auto const & motif : motifs)
         bds.update_max_offset(motif.bounds.first);
 
-//    #pragma omp parallel for num_threads(2)
+    #pragma omp parallel for num_threads(threads)
     for (uint8_t midx = 0; midx < num_motifs; ++midx)
     {
         auto const & motif = motifs[midx];
@@ -87,12 +87,15 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
         auto const iter = motif.elements.crbegin();
         recurse_search<LoopElement>(motif, iter, 0);
         if (verbose > 0)
-            std::cerr << "  " << (100*(midx+1)/num_motifs) << "%";
+        {
+            #pragma omp critical (printcerr)
+            std::cerr << "  " << midx + 1;
+        }
     }
     if (verbose > 0)
         std::cerr << std::endl;
 
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for num_threads(threads)
     for (size_t sidx = 0u; sidx < bds.number_of_seq(); ++sidx)
         std::sort(hits[sidx].begin(), hits[sidx].end(), [] (Hit const & a, Hit const & b)
         {
@@ -104,7 +107,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
         });
 
     size_t num_results = 0;
-//    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for num_threads(threads)
     for (size_t sidx = 0u; sidx < bds.number_of_seq(); ++sidx)
     {
         std::vector<Hit> const & hitvec = hits[sidx];
@@ -133,7 +136,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
             for (Hit & hit : selection)
             {
                 int pos_diff = static_cast<int>(hit.pos - base_pos);
-                hit.score = static_cast<float>(std::max(0.0, hit.score - (0.05 * pos_diff * pos_diff)));
+                hit.score = static_cast<float>(std::max(0.0, hit.score - (0.1 * pos_diff * pos_diff)));
                 max_score[hit.midx] = std::max(max_score[hit.midx], hit.score);
             }
 
@@ -147,12 +150,13 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
 
             base_pos -= static_cast<long long>(bds.get_max_offset());
 
-            if (diversity > 1)
+            if (diversity > 0 && hit_score > num_motifs * min_score)
             {
-                locations.emplace(hit_score, diversity, base_pos, sidx);
-//                std::cout << ">" << std::left << std::setw(35) << bds.get_name(sidx) << "\t" << sidx << "\t"
-//                          << base_pos << "\t" << +diversity << "\t" << hit_score << std::endl;
-                ++num_results;
+                #pragma omp critical (nres)
+                {
+                    locations.emplace(hit_score, diversity, base_pos, sidx);
+                    ++num_results;
+                }
             }
 
             left_end = right_end;

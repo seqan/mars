@@ -42,7 +42,7 @@ int main(int argc, char ** argv)
     if (!motifs.empty() && !settings.genome_file.empty())
     {
         mars::SearchGenerator search{bds, motifs.front().depth};
-        search.find_motifs(motifs);
+        search.find_motifs(motifs, settings.threads, settings.min_score_per_motif);
         out << " " << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
             << "pos" << "\t" << "n" << "\t" << "score" << std::endl;
         for (mars::MotifLocation const & loc : search.get_locations())

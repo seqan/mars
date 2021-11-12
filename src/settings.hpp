@@ -19,6 +19,7 @@ public:
     std::filesystem::path genome_file{};
     unsigned char xdrop{4};
     unsigned int threads{1};
+    float min_score_per_motif{5.f};
 
     bool parse_arguments(int argc, char ** argv, std::ostream & out);
 };
