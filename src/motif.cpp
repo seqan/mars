@@ -1,3 +1,4 @@
+#include <deque>
 #include <iostream>
 #include <seqan3/std/ranges>
 #include <valarray>
@@ -199,6 +200,71 @@ void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
             make_loop(left, true);
     }
     length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
+}
+
+void StemloopMotif::print_rssp(std::ofstream & os) const
+{
+    os << ">RSSP" << +uid << "|startpos=" << bounds.first << "|weight=1\n";
+    std::deque<char> sequence{};
+    std::deque<char> structure{};
+
+    for (auto elemIt = elements.crbegin(); elemIt != elements.crend(); ++elemIt)
+    {
+        std::visit([&sequence, &structure] (auto element)
+        {
+            if constexpr (std::is_same_v<decltype(element), LoopElement>)
+            {
+                auto push = [&sequence, &structure, &element] (char c)
+                {
+                    if (element.is_5prime)
+                    {
+                        sequence.push_front(c);
+                        structure.push_front('.');
+                    }
+                    else
+                    {
+                        sequence.push_back(c);
+                        structure.push_back('.');
+                    }
+                };
+                for (auto profIt = element.profile.crbegin(); profIt != element.profile.crend(); ++profIt)
+                {
+                    unsigned short rank = get_profile_rank(*profIt);
+                    if (rank == 4)
+                        push('N');
+                    else
+                        push(seqan3::rna4{}.assign_rank(rank).to_char());
+                }
+            }
+            else // stem
+            {
+                for (auto profIt = element.profile.crbegin(); profIt != element.profile.crend(); ++profIt)
+                {
+                    unsigned short rank = get_profile_rank(*profIt);
+                    if (rank == 16)
+                    {
+                        sequence.push_front('N');
+                        sequence.push_back('N');
+                    }
+                    else
+                    {
+                        std::pair<char, char> chrs = mars::bi_alphabet<seqan3::rna4>{}.assign_rank(rank).to_chars();
+                        sequence.push_front(chrs.first);
+                        sequence.push_back(chrs.second);
+                    }
+                    structure.push_front('(');
+                    structure.push_back(')');
+                }
+            }
+        }, *elemIt);
+    }
+
+    for (char const c : sequence)
+        os << c;
+    os << '\n';
+    for (char const c : structure)
+        os << c;
+    os << '\n';
 }
 
 std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)

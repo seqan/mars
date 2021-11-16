@@ -17,6 +17,7 @@ private:
 public:
     std::filesystem::path alignment_file{};
     std::filesystem::path genome_file{};
+    std::filesystem::path structator_file{};
     unsigned char xdrop{4};
     unsigned int threads{1};
     float min_score_per_motif{5.f};

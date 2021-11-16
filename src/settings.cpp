@@ -37,6 +37,8 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
     parser.add_option(result_file, 'o', "output",
                       "The output file for the results. If empty we print to stdout.");
 
+    parser.add_option(structator_file, 'r', "rssp", "Output file for rssp output for the Structator program.");
+
     parser.add_option(min_score_per_motif, 's', "scorefilter",
                       "Minimum score per motif that a hit must achieve. Influences the output of low-scoring hits.");
 

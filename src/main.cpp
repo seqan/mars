@@ -1,6 +1,7 @@
 #include <chrono>
 #include <future>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include "index.hpp"
@@ -27,6 +28,17 @@ int main(int argc, char ** argv)
 
     // Generate motifs from the MSA
     std::vector<mars::StemloopMotif> motifs = mars::create_motifs(settings.alignment_file, settings.threads);
+
+    std::thread write_rssp([&motifs] (std::filesystem::path const & file)
+    {
+        if (!motifs.empty() && !file.empty())
+        {
+            std::ofstream os(file);
+            for (auto const & motif : motifs)
+                motif.print_rssp(os);
+            os.close();
+        }
+    }, settings.structator_file);
 
     // Wait for index creation process
     try
@@ -55,10 +67,11 @@ int main(int argc, char ** argv)
     {
         std::cerr << "There are no motifs: skipping search step." << std::endl;
     }
+    write_rssp.join();
 
     if (mars::verbose > 0)
     {
-        auto const & sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
+        auto sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
         std::cerr << argv[0] << " has finished after " << sec << " seconds." << std::endl;
     }
 

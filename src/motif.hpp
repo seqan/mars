@@ -91,6 +91,12 @@ struct StemloopMotif
     void analyze(Msa const & msa, std::vector<int> const & bpseq);
 
     /*!
+     * \brief Print the motif as RSSP for the Structator program.
+     * \param[in,out] os The output stream.
+     */
+    void print_rssp(std::ofstream & os) const;
+
+    /*!
      * \brief Constructor for a stemloop motif.
      * \param id A unique ID for the motif.
      * \param pos The location of the motif.
@@ -127,5 +133,28 @@ std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment
  * \return a vector of motifs with initialized stemloop positions.
  */
 std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
+
+/*!
+ * \brief Analyse whether the profile char is ambiguous.
+ * \tparam alph_type The underlying alphabet type of the profile char.
+ * \param[in] prof The profile char to check.
+ * \return The rank if the profile contains only one entry, the alphabet size otherwise.
+ */
+template <seqan3::semialphabet alph_type>
+unsigned short get_profile_rank(profile_char<alph_type> const & prof)
+{
+    unsigned short rank = seqan3::alphabet_size<alph_type>;
+    for (unsigned short idx = 0; idx < seqan3::alphabet_size<alph_type>; ++idx)
+    {
+        if (prof.quantity(idx) > 0)
+        {
+            if (rank == seqan3::alphabet_size<alph_type>)
+                rank = idx;
+            else
+                return seqan3::alphabet_size<alph_type>; // N
+        }
+    }
+    return rank;
+}
 
 } // namespace mars
