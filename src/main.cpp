@@ -1,4 +1,5 @@
 #include <chrono>
+#include <fstream>
 #include <future>
 #include <iostream>
 #include <thread>
@@ -13,12 +14,9 @@ int main(int argc, char ** argv)
 {
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
 
-    // Set the output stream
-    std::ostream out{std::cout.rdbuf()};
-
     // Parse arguments
     mars::Settings settings{};
-    if (!settings.parse_arguments(argc, argv, out))
+    if (!settings.parse_arguments(argc, argv))
         return EXIT_FAILURE;
 
     // Start reading the genome and creating the index asyncronously
@@ -55,12 +53,25 @@ int main(int argc, char ** argv)
     {
         mars::SearchGenerator search{bds, motifs.front().depth};
         search.find_motifs(motifs, settings.threads, settings.min_score_per_motif);
-        out << " " << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
-            << "pos" << "\t" << "n" << "\t" << "score" << std::endl;
-        for (mars::MotifLocation const & loc : search.get_locations())
+
+        auto print_results = [&bds, &search] (std::ostream & out)
         {
-            out << ">" << std::left << std::setw(35) << bds.get_name(loc.sequence) << "\t" << loc.sequence << "\t"
-                << loc.position << "\t" << +loc.num_stemloops << "\t" << loc.score << std::endl;
+            out << " " << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
+                << "pos" << "\t" << "n" << "\t" << "score" << std::endl;
+            for (mars::MotifLocation const & loc : search.get_locations())
+                out << ">" << std::left << std::setw(35) << bds.get_name(loc.sequence) << "\t" << loc.sequence << "\t"
+                    << loc.position << "\t" << +loc.num_stemloops << "\t" << loc.score << std::endl;
+        };
+
+        if (!settings.result_file.empty())
+        {
+            std::ofstream file_stream(settings.result_file);
+            print_results(file_stream);
+            file_stream.close();
+        }
+        else
+        {
+            print_results(std::cout);
         }
     }
     else if (motifs.empty() && mars::verbose > 0)

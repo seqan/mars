@@ -10,7 +10,7 @@ namespace mars
 
 unsigned short verbose{0};
 
-bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
+bool Settings::parse_arguments(int argc, char ** argv)
 {
     seqan3::argument_parser parser{"mars", argc, argv};
     parser.info.short_description = "Motif-based aligned RNA searcher";
@@ -68,16 +68,6 @@ bool Settings::parse_arguments(int argc, char ** argv, std::ostream & out)
     }
     if (verbose > 0)
         std::cerr << "Number of threads: " << threads << std::endl;
-
-    file_stream.rdbuf()->open(result_file, std::ios_base::out);
-    if (!result_file.empty())
-        out.rdbuf(file_stream.rdbuf());
-
-    if (!out)
-    {
-        seqan3::debug_stream << "Failed to open the output file " << result_file << "\n";
-        return false;
-    }
 
     return true;
 }

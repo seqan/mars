@@ -1,4 +1,5 @@
 #include <deque>
+#include <fstream>
 #include <iostream>
 #include <seqan3/std/ranges>
 #include <valarray>
