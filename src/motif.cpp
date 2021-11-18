@@ -15,7 +15,6 @@
 #include "motif.hpp"
 #include "multiple_alignment.hpp"
 #include "settings.hpp"
-#include "structure.hpp"
 
 namespace mars
 {
@@ -86,16 +85,13 @@ std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment
     // Read the alignment
     Msa msa = read_msa(alignment_file);
 
-    // Compute an alignment structure
-    auto structure = compute_structure(msa);
-
     // Find the stem loops
-    std::vector<StemloopMotif> motifs = detect_stemloops(structure.first, structure.second);
+    std::vector<StemloopMotif> motifs = detect_stemloops(msa.structure.first, msa.structure.second);
 
     // Create a structure motif for each stemloop
     #pragma omp parallel for num_threads(threads)
     for (size_t idx = 0; idx < motifs.size(); ++idx)
-        motifs[idx].analyze(msa, structure.first);
+        motifs[idx].analyze(msa);
 
     if (verbose > 0)
     {
@@ -123,10 +119,11 @@ void check_gaps(int & current_gap, std::vector<std::unordered_map<MotifLen, SeqN
     }
 };
 
-void StemloopMotif::analyze(Msa const & msa, std::vector<int> const & bpseq)
+void StemloopMotif::analyze(Msa const & msa)
 {
     depth = msa.sequences.size();
     std::valarray<MotifLen> motif_len_stat(static_cast<MotifLen>(0), depth);
+    std::vector<int> const & bpseq = msa.structure.first;
 
     auto make_stem = [this, &msa, &bpseq, &motif_len_stat] (int & left, int & right)
     {

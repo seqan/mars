@@ -9,7 +9,7 @@
 namespace mars
 {
 
-std::pair<std::vector<int>, std::vector<int>> compute_structure(Msa const & msa)
+void compute_structure(Msa & msa)
 {
     // Convert names
     std::list<std::string> names{msa.names.size()};
@@ -20,7 +20,7 @@ std::pair<std::vector<int>, std::vector<int>> compute_structure(Msa const & msa)
     for (auto && [src, trg] : seqan3::views::zip(msa.sequences | seqan3::views::to_char, seqs))
         std::ranges::copy(src, std::cpp20::back_inserter(trg));
 
-    return std::move(run_ipknot(names, seqs));
+    msa.structure = std::move(run_ipknot(names, seqs));
 }
 
 }

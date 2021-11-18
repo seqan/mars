@@ -28,7 +28,7 @@ bool Settings::parse_arguments(int argc, char ** argv)
     parser.add_option(alignment_file, 'a', "alignment",
                       "Alignment file of structurally aligned RNA sequences.",
                       seqan3::option_spec::standard,
-                      seqan3::input_file_validator{{"msa", "aln", "fasta", "fa", "sth", "stk"}});
+                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk"}});
 
     parser.add_option(genome_file, 'g', "genome",
                       "A sequence file containing one or more sequences.");

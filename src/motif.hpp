@@ -86,9 +86,8 @@ struct StemloopMotif
     /*!
      * \brief Analyze the motif's properties based on the MSA and interactions.
      * \param msa The multiple structural alignment.
-     * \param bpseq The base pairing at each position.
      */
-    void analyze(Msa const & msa, std::vector<int> const & bpseq);
+    void analyze(Msa const & msa);
 
     /*!
      * \brief Print the motif as RSSP for the Structator program.

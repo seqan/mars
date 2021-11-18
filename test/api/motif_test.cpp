@@ -52,6 +52,7 @@ TEST(Motif, AnalyzeStemLoop)
                            6, 5, 4, 3, 2, 1, 0,-1};
 
     mars::Msa msa{};
+    msa.structure.first = std::move(bpseq);
     msa.sequences.resize(5);
     using std::ranges::copy;
     copy(std::string_view{"gcuuuaaaagc-uuu---gcugaagcaacggcc----uuguaagucguagaa-aacu--a-ua---cguuuuaaagcu"}
@@ -66,7 +67,7 @@ TEST(Motif, AnalyzeStemLoop)
          | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[4]));
 
     mars::StemloopMotif motif{0, {27, 47}};
-    motif.analyze(msa, bpseq);
+    motif.analyze(msa);
     EXPECT_EQ(motif.bounds, (mars::Coordinate{27ul, 47ul}));
     EXPECT_EQ(motif.length.min, 17);
     EXPECT_EQ(motif.length.max, 21);
