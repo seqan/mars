@@ -45,6 +45,14 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
     std::vector<StemloopMotif> stemloops;
     unsigned char id_cnt{0u};
 
+    auto contains_loop = [&stemloops] (Coordinate const & outer)
+    {
+        return std::any_of(stemloops.crbegin(), stemloops.crend(), [&outer] (StemloopMotif const & inner)
+        {
+            return outer.first < inner.bounds.first && inner.bounds.second < outer.second;
+        });
+    };
+
     // 0-based indices
     for (auto &&[idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
     {
@@ -59,12 +67,12 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
         {
             status.previous = {bp, idx};
             status.closing = true;
-            if (--status.level == 0)
+            if (--status.level == 0 && !contains_loop(status.previous))
                 stemloops.emplace_back(id_cnt++, status.previous);
         }
         else if (status.closing) // open an interaction (after closing the previous)
         {
-            if (status.level > 0)
+            if (status.level > 0 && !contains_loop(status.previous))
                 stemloops.emplace_back(id_cnt++, status.previous);
             status.level = 1;
             status.closing = false;
@@ -191,11 +199,12 @@ void StemloopMotif::analyze(Msa const & msa)
     {
         if (bpseq[left] == right) // stem
             make_stem(left, right);
-
-        if (bpseq[right] < bounds.first || bpseq[right] > bounds.second) // 3' loop
+        else if (bpseq[right] < bounds.first || bpseq[right] > bounds.second) // 3' loop
             make_loop(right, false);
         else if (bpseq[left] < bounds.first || bpseq[left] > bounds.second) // 5' loop
             make_loop(left, true);
+        else
+            assert(false); // prevent endless loop
     }
     length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
 }
