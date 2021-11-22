@@ -85,7 +85,10 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, uns
         auto const & motif = motifs[midx];
         // start with the hairpin
         auto const iter = motif.elements.crbegin();
-        recurse_search<LoopElement>(motif, iter, 0);
+        if (std::holds_alternative<LoopElement>(*iter))
+            recurse_search<LoopElement>(motif, iter, 0);
+        else
+            recurse_search<StemElement>(motif, iter, 0);
         if (verbose > 0)
         {
             #pragma omp critical (printcerr)
