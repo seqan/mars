@@ -12,6 +12,10 @@
 #include <seqan3/utility/views/slice.hpp>
 #include <seqan3/utility/views/zip.hpp>
 
+#if SEQAN3_WITH_CEREAL
+#include <cereal/archives/json.hpp>
+#endif
+
 #include "motif.hpp"
 #include "multiple_alignment.hpp"
 #include "settings.hpp"
@@ -89,6 +93,8 @@ std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment
 {
     if (alignment_file.empty())
         return {};
+    else if (alignment_file.extension().string().find("json") != std::string::npos)
+        return std::move(restore_motifs(alignment_file));
 
     // Read the alignment
     Msa msa = read_msa(alignment_file);
@@ -305,5 +311,61 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
      }
     return os;
 }
+
+void store_rssp(std::filesystem::path const & rssp_file, std::vector<StemloopMotif> const & motifs)
+{
+    if (rssp_file.empty() || motifs.empty())
+        return;
+
+    std::ofstream ofs(rssp_file);
+    if (ofs)
+    {
+        for (auto const & motif : motifs)
+            motif.print_rssp(ofs);
+        if (mars::verbose > 0)
+            std::cerr << "Stored " << motifs.size() << " motifs ==> " << rssp_file << std::endl;
+    }
+    ofs.close();
+}
+
+#if SEQAN3_WITH_CEREAL
+std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_file)
+{
+    std::vector<StemloopMotif> motifs{};
+    std::ifstream ifs{motif_file, std::ios::binary};
+    if (ifs.good())
+    {
+        cereal::JSONInputArchive iarchive{ifs};
+        std::string version;
+        iarchive(version);
+        if (version[0] == '1')
+        {
+            iarchive(motifs);
+            if (verbose > 0)
+                std::cerr << "Restored " << motifs.size() << " motifs <== " << motif_file << std::endl;
+        }
+    }
+    ifs.close();
+    return std::move(motifs);
+}
+
+void store_motifs(std::filesystem::path const & motif_file, std::vector<StemloopMotif> const & motifs)
+{
+    if (motif_file.empty() || motifs.empty())
+        return;
+    std::ofstream ofs{motif_file, std::ios::binary};
+    if (ofs)
+    {
+        // Write the index to disk, including a version string.
+        cereal::JSONOutputArchive oarchive{ofs};
+        std::string const version{"1 mars vector<StemloopMotif>\n"};
+        oarchive(version);
+        oarchive(motifs);
+        if (verbose > 0)
+            std::cerr << "Stored " << motifs.size() << " motifs ==> " << motif_file << std::endl;
+    }
+    ofs.close();
+}
+#endif
 
 } // namespace mars

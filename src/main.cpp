@@ -26,19 +26,8 @@ int main(int argc, char ** argv)
 
     // Generate motifs from the MSA
     std::vector<mars::StemloopMotif> motifs = mars::create_motifs(settings.alignment_file, settings.threads);
-
-    std::thread write_rssp([&motifs] (std::filesystem::path const & file)
-    {
-        if (!motifs.empty() && !file.empty())
-        {
-            if (mars::verbose > 0)
-                std::cerr << "Exporting the stem loops in rssp format ==> " << file << std::endl;
-            std::ofstream os(file);
-            for (auto const & motif : motifs)
-                motif.print_rssp(os);
-            os.close();
-        }
-    }, settings.structator_file);
+    std::thread write_json(mars::store_motifs, settings.motif_file, motifs);
+    std::thread write_rssp(mars::store_rssp, settings.structator_file, motifs);
 
     // Wait for index creation process
     try
@@ -88,6 +77,7 @@ int main(int argc, char ** argv)
         std::cerr << "No genome provided: skipping search step." << std::endl;
     }
     write_rssp.join();
+    write_json.join();
 
     if (mars::verbose > 0)
     {

@@ -5,6 +5,11 @@
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
+#include <seqan3/core/concept/cereal.hpp>
+
+#if SEQAN3_WITH_CEREAL
+#include <cereal/types/array.hpp>
+#endif
 
 namespace mars
 {
@@ -251,6 +256,14 @@ public:
         });
         return std::move(tmp);
     }
+
+#if SEQAN3_WITH_CEREAL
+    template <seqan3::cereal_archive Archive>
+    void serialize(Archive & archive)
+    {
+        archive(tally);
+    }
+#endif
 };
 
 /*!

@@ -25,19 +25,32 @@ bool Settings::parse_arguments(int argc, char ** argv)
                                          "accompanied with a quality value for each hit.");
 
     // Parser
+    parser.add_option(genome_file, 'g', "genome",
+                      "A sequence file containing one or more sequences.");
+
+#if SEQAN3_WITH_CEREAL
+    parser.add_option(alignment_file, 'a', "alignment",
+                      "Alignment file of structurally aligned RNA sequences, "
+                      "or a motif file to restore previously calculated motifs.",
+                      seqan3::option_spec::standard,
+                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk", "json"}});
+
+    parser.add_option(motif_file, 'm', "motif", "File for storing the motifs.", seqan3::option_spec::standard,
+                      seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"json"}});
+#else
     parser.add_option(alignment_file, 'a', "alignment",
                       "Alignment file of structurally aligned RNA sequences.",
                       seqan3::option_spec::standard,
                       seqan3::input_file_validator{{"msa", "aln", "sth", "stk"}});
-
-    parser.add_option(genome_file, 'g', "genome",
-                      "A sequence file containing one or more sequences.");
+#endif
 
     //output path as option, otherwise output is printed
     parser.add_option(result_file, 'o', "output",
                       "The output file for the results. If empty we print to stdout.");
 
-    parser.add_option(structator_file, 'r', "rssp", "Output file for rssp output for the Structator program.");
+    parser.add_option(structator_file, 'r', "rssp", "Output file for rssp output for the Structator program.",
+                      seqan3::option_spec::standard,
+                      seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"pat"}});
 
     parser.add_option(min_score_per_motif, 's', "scorefilter",
                       "Minimum score per motif that a hit must achieve. Influences the output of low-scoring hits.");
@@ -66,8 +79,6 @@ bool Settings::parse_arguments(int argc, char ** argv)
         unsigned int nthreads = std::thread::hardware_concurrency();
         threads = nthreads != 0u ? nthreads : 1u;
     }
-    if (verbose > 0)
-        std::cerr << "Number of threads: " << threads << std::endl;
 
     return true;
 }

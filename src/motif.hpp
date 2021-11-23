@@ -7,6 +7,16 @@
 #include <vector>
 
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
+#include <seqan3/core/concept/cereal.hpp>
+
+#if SEQAN3_WITH_CEREAL
+#include <cereal/types/string.hpp>
+#include <cereal/types/tuple.hpp>
+#include <cereal/types/unordered_map.hpp>
+#include <cereal/types/utility.hpp>
+#include <cereal/types/variant.hpp>
+#include <cereal/types/vector.hpp>
+#endif
 
 #include "bi_alphabet.hpp"
 #include "multiple_alignment.hpp"
@@ -30,6 +40,16 @@ struct LengthStat
     MotifLen min;
     MotifLen max;
     float mean;
+
+#if SEQAN3_WITH_CEREAL
+    template <seqan3::cereal_archive Archive>
+    void serialize(Archive & archive)
+    {
+        archive(min);
+        archive(max);
+        archive(mean);
+    }
+#endif
 };
 
 //! \brief The boundaries of a stemloop.
@@ -42,6 +62,17 @@ struct LoopElement
     std::vector<profile_char<seqan3::rna4>> profile;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
     bool is_5prime;
+
+#if SEQAN3_WITH_CEREAL
+    template <seqan3::cereal_archive Archive>
+    void serialize(Archive & archive)
+    {
+        archive(length);
+        archive(profile);
+        archive(gaps);
+        archive(is_5prime);
+    }
+#endif
 };
 
 //! \brief A stem element in a stemloop.
@@ -50,6 +81,16 @@ struct StemElement
     LengthStat length;
     std::vector<profile_char<bi_alphabet<seqan3::rna4>>> profile;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
+
+#if SEQAN3_WITH_CEREAL
+    template <seqan3::cereal_archive Archive>
+    void serialize(Archive & archive)
+    {
+        archive(length);
+        archive(profile);
+        archive(gaps);
+    }
+#endif
 };
 
 //! \brief A stemloop motif consists of a series of loop and stem elements.
@@ -107,6 +148,21 @@ struct StemloopMotif
         depth{},
         elements{}
     {}
+
+#if SEQAN3_WITH_CEREAL
+    StemloopMotif() : uid{}, bounds{}, length{}, depth{}, elements{}
+    {}
+
+    template <seqan3::cereal_archive Archive>
+    void serialize(Archive & archive)
+    {
+        archive(uid);
+        archive(bounds);
+        archive(length);
+        archive(depth);
+        archive(elements);
+    }
+#endif
 };
 
 /*!
@@ -155,5 +211,28 @@ unsigned short get_profile_rank(profile_char<alph_type> const & prof)
     }
     return rank;
 }
+
+/*!
+ * \brief Write the motifs in rssp format for Structator.
+ * \param rssp_file The filename of the output file.
+ * \param motifs the motif vector.
+ */
+void store_rssp(std::filesystem::path const & rssp_file, std::vector<StemloopMotif> const & motifs);
+
+#if SEQAN3_WITH_CEREAL
+/*!
+ * \brief Read motifs from a file.
+ * \param motif_file The filename from which where the motifs can be restored.
+ * \return the motif vector.
+ */
+std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_file);
+
+/*!
+ * \brief Write the motifs to a file.
+ * \param motif_file The filename where the motifs are stored.
+ * \param motifs The motifs.
+ */
+void store_motifs(std::filesystem::path const & motif_file, std::vector<StemloopMotif> const & motifs);
+#endif
 
 } // namespace mars

@@ -11,6 +11,7 @@ struct Settings
 {
     std::filesystem::path alignment_file{};
     std::filesystem::path genome_file{};
+    std::filesystem::path motif_file{};
     std::filesystem::path result_file{};
     std::filesystem::path structator_file{};
     unsigned char xdrop{4};
