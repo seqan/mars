@@ -22,7 +22,7 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     {
         cursors.emplace_back(index);
         if (verbose > 0)
-            std::cerr << "Using existing index file: " << indexpath << std::endl;
+            std::cerr << "Using existing index <== " << indexpath << std::endl;
         return;
     }
 
@@ -30,22 +30,20 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
     if (std::filesystem::exists(filepath))
     {
         if (verbose > 0)
-            std::cerr << "Read genome from " << filepath << std::endl;
+            std::cerr << "Read genome <== " << filepath << std::endl;
         std::vector<seqan3::dna4_vector> seqs{};
         read_genome(seqs, names, filepath);
         // Generate the BiFM index.
-        if (verbose > 0)
-            std::cerr << "Create index... ";
         index = Index{seqs};
         cursors.emplace_back(index);
         write_index(index, names, indexpath);
         if (verbose > 0)
-            std::cerr << indexpath << std::endl;
+            std::cerr << "Created index ==> " << indexpath << std::endl;
     }
     else
     {
         std::ostringstream err_msg{};
-        err_msg << "Could not find the genome file: " << filepath << "[.marsindex";
+        err_msg << "Could not find the genome file <== " << filepath << "[.marsindex";
 #ifdef SEQAN3_HAS_ZLIB
         err_msg << ".gz";
 #endif

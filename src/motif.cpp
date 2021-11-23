@@ -103,7 +103,7 @@ std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment
 
     if (verbose > 0)
     {
-        std::cerr << "Found " << motifs.size() << " stem loops in " << alignment_file << std::endl;
+        std::cerr << "Found " << motifs.size() << " stem loops <== " << alignment_file << std::endl;
         if (verbose > 1)
             for (auto const & motif : motifs)
                 std::cerr << motif << std::endl;

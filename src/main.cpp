@@ -31,6 +31,8 @@ int main(int argc, char ** argv)
     {
         if (!motifs.empty() && !file.empty())
         {
+            if (mars::verbose > 0)
+                std::cerr << "Exporting the stem loops in rssp format ==> " << file << std::endl;
             std::ofstream os(file);
             for (auto const & motif : motifs)
                 motif.print_rssp(os);
@@ -56,8 +58,9 @@ int main(int argc, char ** argv)
 
         auto print_results = [&bds, &search] (std::ostream & out)
         {
-            out << " " << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
-                << "pos" << "\t" << "n" << "\t" << "score" << std::endl;
+            if (!search.get_locations().empty())
+                out << " " << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
+                    << "pos" << "\t" << "n" << "\t" << "score" << std::endl;
             for (mars::MotifLocation const & loc : search.get_locations())
                 out << ">" << std::left << std::setw(35) << bds.get_name(loc.sequence) << "\t" << loc.sequence << "\t"
                     << loc.position << "\t" << +loc.num_stemloops << "\t" << loc.score << std::endl;
@@ -65,6 +68,8 @@ int main(int argc, char ** argv)
 
         if (!settings.result_file.empty())
         {
+            if (mars::verbose > 0)
+                std::cerr << "Writing results ==> " << settings.result_file << std::endl;
             std::ofstream file_stream(settings.result_file);
             print_results(file_stream);
             file_stream.close();
@@ -77,6 +82,10 @@ int main(int argc, char ** argv)
     else if (motifs.empty() && mars::verbose > 0)
     {
         std::cerr << "There are no motifs: skipping search step." << std::endl;
+    }
+    else if (mars::verbose > 0)
+    {
+        std::cerr << "No genome provided: skipping search step." << std::endl;
     }
     write_rssp.join();
 
