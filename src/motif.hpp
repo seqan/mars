@@ -34,6 +34,9 @@ using MotifLen = uint16_t;
 //! \brief Type for the score of a motif.
 using MotifScore = float;
 
+//! \brief Type for sequence id. We expect to have less than 4G sequences.
+using SeqNum = size_t;
+
 //! \brief Store {min, mean, max} of a distribution.
 struct LengthStat
 {

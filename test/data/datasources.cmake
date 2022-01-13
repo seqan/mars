@@ -7,6 +7,10 @@ declare_datasource (FILE tRNA.aln
                     URL_HASH MD5=3508f9246b00552868f06bf26b3ef688
                     URL ${CMAKE_SOURCE_DIR}/test/data/tRNA.aln)
 
+declare_datasource (FILE SSU_rRNA_5.sth
+                    URL_HASH MD5=8738da67ce6245a42a68283dbc2bf552
+                    URL ${CMAKE_SOURCE_DIR}/test/data/SSU_rRNA_5.sth)
+
 declare_datasource (FILE genome.fa
                     URL_HASH MD5=0b008b60b471145533f90ca1959ecf16
                     URL ${CMAKE_SOURCE_DIR}/test/data/genome.fa)

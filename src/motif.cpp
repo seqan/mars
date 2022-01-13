@@ -210,7 +210,13 @@ void StemloopMotif::analyze(Msa const & msa)
         else if (bpseq[left] < bounds.first || bpseq[left] > bounds.second) // 5' loop
             make_loop(left, true);
         else
-            assert(false); // prevent endless loop
+        {
+            std::cerr << "Unexpected condition!";
+            for (int bp : bpseq)
+                std::cerr << " " << bp;
+            std::cerr << std::endl;
+            exit(2); // prevent endless loop
+        }
     }
     length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
 }

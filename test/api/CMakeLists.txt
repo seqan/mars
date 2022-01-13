@@ -12,6 +12,7 @@ target_use_datasources (index_test FILES
 
 add_api_test (input_test.cpp)
 target_use_datasources (input_test FILES tRNA.aln)
+target_use_datasources (input_test FILES SSU_rRNA_5.sth)
 
 add_api_test (motif_test.cpp)
 

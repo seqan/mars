@@ -36,17 +36,17 @@ MultipleAlignment<alphabet_type> read_clustal_file(std::istream & stream)
     MultipleAlignment<alphabet_type> msa;
 
     // Define a lambda function to decide if a character is legal.
-    auto check_legal_alphabet = [] (char const c)
+    auto check_legal_alphabet = [] (char const chr)
     {
         using legal_alphabet_type = std::conditional_t<seqan3::nucleotide_alphabet<alphabet_type>,
                                                        seqan3::rna15,
                                                        seqan3::aa27>;
         auto constexpr is_legal_alph = seqan3::char_is_valid_for<seqan3::gapped<legal_alphabet_type>>;
-        if (!is_legal_alph(c))
+        if (!is_legal_alph(chr))
             throw seqan3::parse_error{"Encountered an unexpected letter: char_is_valid_for<" +
                                       seqan3::detail::type_name_as_string<legal_alphabet_type> +
-                                      "> evaluated to false on " + seqan3::detail::make_printable(c)};
-        return c;
+                                      "> evaluated to false on " + seqan3::detail::make_printable(chr)};
+        return chr;
     };
 
     auto stream_view = seqan3::detail::istreambuf(stream);
@@ -83,17 +83,19 @@ MultipleAlignment<alphabet_type> read_clustal_file(std::istream & stream)
             msa.names.push_back(name);
             msa.sequences.push_back(std::vector<seqan3::gapped<alphabet_type>>{});
         }
-        else
+        else if (idx >= msa.names.size()) // check for inconsistencies
         {
-            // check for inconsistencies
-            assert(msa.names.size() > idx);
-            if (!std::ranges::equal(name, msa.names[idx])) // validate the sequence name
-                throw seqan3::parse_error{"Expected to read '" + msa.names[idx] + "' in the input file."};
+            throw seqan3::parse_error{"Inconsistent alignment depth in the input file."};
         }
+        else if (!std::ranges::equal(name, msa.names[idx])) // validate the sequence name
+        {
+            throw seqan3::parse_error{"Expected to read '" + msa.names[idx] + "' in the input file."};
+        }
+
         // go to the beginning of sequence
         seqan3::detail::consume(stream_view | seqan3::detail::take_until_or_throw(!seqan3::is_blank));
 
-        // copy the sequence
+        // read the sequence
         std::ranges::copy(stream_view | seqan3::detail::take_until_or_throw(seqan3::is_space)
                           | std::views::filter(!seqan3::is_digit)
                           | std::views::transform(check_legal_alphabet)
