@@ -42,7 +42,7 @@ int main(int argc, char ** argv)
 
     if (!motifs.empty() && !settings.genome_file.empty())
     {
-        mars::SearchGenerator search{bds, motifs.front().depth};
+        mars::SearchGenerator search{bds};
         search.find_motifs(motifs, settings.threads, settings.min_score_per_motif);
 
         auto print_results = [&bds, &search] (std::ostream & out)

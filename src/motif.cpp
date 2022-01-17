@@ -1,12 +1,11 @@
+#include <algorithm>
 #include <deque>
 #include <fstream>
 #include <iostream>
 #include <seqan3/std/ranges>
+#include <set>
+#include <tuple>
 #include <valarray>
-
-#ifdef MARS_WITH_OPENMP
-    #include <omp.h>
-#endif
 
 #include <seqan3/utility/views/deep.hpp>
 #include <seqan3/utility/views/slice.hpp>
@@ -103,9 +102,10 @@ std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment
     std::vector<StemloopMotif> motifs = detect_stemloops(msa.structure.first, msa.structure.second);
 
     // Create a structure motif for each stemloop
-    #pragma omp parallel for num_threads(threads)
-    for (size_t idx = 0; idx < motifs.size(); ++idx)
-        motifs[idx].analyze(msa);
+    std::for_each(motifs.begin(), motifs.end(), [&msa] (StemloopMotif & motif)
+    {
+        motif.analyze(msa);
+    });
 
     if (verbose > 0)
     {
@@ -159,6 +159,7 @@ void StemloopMotif::analyze(Msa const & msa)
                 check_gaps(current_gap, elem.gaps, elem.profile.size(), is_gap);
             }
             elem.profile.push_back(prof);
+            elem.prio.push_back(prof.priority(depth));
             ++left;
             --right;
         }
@@ -188,6 +189,7 @@ void StemloopMotif::analyze(Msa const & msa)
                 check_gaps(current_gap, elem.gaps, elem.profile.size(), is_gap);
             }
             elem.profile.push_back(prof);
+            elem.prio.push_back(prof.priority(depth));
             bpidx += (elem.is_5prime ? 1 : -1);
         }
         while (bpseq[bpidx] < bounds.first || bpseq[bpidx] > bounds.second);

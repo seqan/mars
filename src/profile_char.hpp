@@ -2,10 +2,13 @@
 
 #include <array>
 #include <cmath>
+#include <set>
+#include <tuple>
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/core/concept/cereal.hpp>
+#include <seqan3/utility/views/zip.hpp>
 
 #if SEQAN3_WITH_CEREAL
 #include <cereal/types/array.hpp>
@@ -13,6 +16,54 @@
 
 namespace mars
 {
+
+/*!
+ * \brief Stores the expected background distribution for structured RNA sequences.
+ */
+struct
+{
+    std::array<float, 16> const r16
+        {
+            // Source:
+            // Olson, W. K., Esguerra, M., Xin, Y., & Lu, X. J. (2009).
+            // New information content in RNA base pairing deduced from quantitative analysis of high-resolution structures.
+            // Methods (San Diego, Calif.), 47(3), 177–186. https://doi.org/10.1016/j.ymeth.2008.12.003
+
+            log2f( 384.f     / 17328), // AA
+            log2f( 313.f / 2 / 17328), // AC
+            log2f( 980.f / 2 / 17328), // AG
+            log2f(3975.f / 2 / 17328), // AU
+            log2f( 313.f / 2 / 17328), // CA
+            log2f(  63.f     / 17328), // CC
+            log2f(9913.f / 2 / 17328), // CG
+            log2f( 103.f / 2 / 17328), // CU
+            log2f( 980.f / 2 / 17328), // GA
+            log2f(9913.f / 2 / 17328), // GC
+            log2f( 128.f     / 17328), // GG
+            log2f(1282.f / 2 / 17328), // GU
+            log2f(3975.f / 2 / 17328), // UA
+            log2f( 103.f / 2 / 17328), // UC
+            log2f(1282.f / 2 / 17328), // UG
+            log2f( 187.f     / 17328)  // UU
+        };
+
+    std::array<float, 4> const r4
+        {
+            log2f(0.3f), // A
+            log2f(0.2f), // C
+            log2f(0.2f), // G
+            log2f(0.3f)  // U
+        };
+
+    template <unsigned short size> requires (size == 4 || size == 16)
+    std::array<float, size> const & get() const
+    {
+        if constexpr (size == 4)
+            return r4;
+        else
+            return r16;
+    }
+} BackgroundDistribution;
 
 /*!\interface BiAlphabetConcept <>
  * \brief A concept that checks whether t is a Bialphabet.
@@ -28,7 +79,6 @@ requires (t v)
     { v.to_chars() };
 };
 //!\endcond
-
 
 /*!
  * \brief Stores the frequency of characters at a specific position.
@@ -247,14 +297,17 @@ public:
         return std::move(tmp);
     }
 
-    std::array<float, size> log_quantities() const
+    /*!
+     * \brief Retrieve the log quantities relative to the background distribution.
+     * \param depth The number of sequences used to create the profile (for normalization).
+     * \return A priority queue with logarithmic scores and the respective RNA characters.
+     */
+    std::set<std::pair<float, alph_type>> priority(size_t depth) const
     {
-        std::array<float, size> tmp;
-        std::transform(tally.begin(), tally.end(), tmp.begin(), [] (uint32_t x)
-        {
-            return std::log2f((x + 1) / static_cast<float>(one));
-        });
-        return std::move(tmp);
+        std::set<std::pair<float, alph_type>> result{};
+        for (auto && [idx, bg] : seqan3::views::zip(std::ranges::views::iota(0), BackgroundDistribution.get<size>()))
+            result.emplace(log2f((tally[idx] + 1.) / one / depth) - bg, alph_type{}.assign_rank(idx));
+        return result;
     }
 
 #if SEQAN3_WITH_CEREAL

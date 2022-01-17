@@ -63,6 +63,7 @@ struct LoopElement
 {
     LengthStat length;
     std::vector<profile_char<seqan3::rna4>> profile;
+    std::vector<std::set<std::pair<MotifScore, seqan3::rna4>>> prio;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
     bool is_5prime;
 
@@ -83,6 +84,7 @@ struct StemElement
 {
     LengthStat length;
     std::vector<profile_char<bi_alphabet<seqan3::rna4>>> profile;
+    std::vector<std::set<std::pair<MotifScore, bi_alphabet<seqan3::rna4>>>> prio;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
 
 #if SEQAN3_WITH_CEREAL

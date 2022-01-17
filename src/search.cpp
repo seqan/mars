@@ -1,4 +1,5 @@
-#include <seqan3/utility/views/zip.hpp>
+#include <algorithm>
+#include <thread>
 
 #ifdef MARS_WITH_OPENMP
     #include <omp.h>
@@ -9,21 +10,6 @@
 
 namespace mars
 {
-
-template <seqan3::semialphabet Alphabet>
-inline std::set<std::pair<MotifScore, Alphabet>> SearchGenerator::priority(profile_char<Alphabet> const & prof) const
-{
-    std::set<std::pair<MotifScore, Alphabet>> result{};
-
-    auto const & quantities = prof.log_quantities();
-    auto const & bgd = background_distr.get<seqan3::alphabet_size<Alphabet>>();
-
-    for (auto && [idx, score, bg] : seqan3::views::zip(std::ranges::views::iota(0), quantities, bgd))
-        if (score - bg - log_depth >= -2.f)
-            result.emplace(score - bg - log_depth, Alphabet{}.assign_rank(idx));
-
-    return std::move(result);
-}
 
 template <typename MotifElement>
 void SearchGenerator::recurse_search(StemloopMotif const & motif, ElementIter const & elem_it, MotifLen idx)
@@ -45,7 +31,7 @@ void SearchGenerator::recurse_search(StemloopMotif const & motif, ElementIter co
         return;
     }
 
-    auto prio = priority(elem.profile[elem.profile.size() - idx - 1]);
+    auto const & prio = elem.prio[elem.profile.size() - idx - 1];
 
     // try to extend the pattern
     for (auto opt = prio.crbegin(); opt != prio.crend(); ++opt)
@@ -71,7 +57,7 @@ void SearchGenerator::recurse_search(StemloopMotif const & motif, ElementIter co
 void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, unsigned threads, float min_score)
 {
     if (mars::verbose > 0)
-        std::cerr << "Start the motif search...";
+        std::cerr << "Start the motif search...\n";
     assert(motifs.size() <= UINT8_MAX);
     uint8_t const num_motifs = motifs.size();
     hits.resize(bds.number_of_seq());
@@ -79,28 +65,39 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, uns
     for (auto const & motif : motifs)
         bds.update_max_offset(motif.bounds.first);
 
-    #pragma omp parallel for num_threads(threads)
-    for (uint8_t midx = 0; midx < num_motifs; ++midx)
-    {
-        auto const & motif = motifs[midx];
-        // start with the hairpin
-        auto const iter = motif.elements.crbegin();
-        if (std::holds_alternative<LoopElement>(*iter))
-            recurse_search<LoopElement>(motif, iter, 0);
-        else
-            recurse_search<StemElement>(motif, iter, 0);
-        if (verbose > 0)
-        {
-            #pragma omp critical (printcerr)
-            std::cerr << "  " << midx + 1;
-        }
-    }
-    if (verbose > 0)
-        std::cerr << std::endl;
+    std::mutex mutex_cerr;
 
-    #pragma omp parallel for num_threads(threads)
-    for (size_t sidx = 0u; sidx < bds.number_of_seq(); ++sidx)
-        std::sort(hits[sidx].begin(), hits[sidx].end(), [] (Hit const & a, Hit const & b)
+    std::vector<std::thread> thread_pool(1);
+    for (StemloopMotif const & motif : motifs)
+    {
+        thread_pool[0] = std::thread([this, motif, &mutex_cerr]
+        {
+            if (verbose > 0)
+            {
+                std::lock_guard<std::mutex> guard(mutex_cerr);
+                std::cerr << " Start " << (+motif.uid + 1) << std::endl;
+            }
+            // start with the hairpin
+            auto const iter = motif.elements.crbegin();
+            if (std::holds_alternative<LoopElement>(*iter))
+                recurse_search<LoopElement>(motif, iter, 0);
+            else
+                recurse_search<StemElement>(motif, iter, 0);
+            if (verbose > 0)
+            {
+                std::lock_guard<std::mutex> guard(mutex_cerr);
+                std::cerr << " Finish " << (+motif.uid + 1) << std::endl;
+            }
+        });
+        thread_pool[0].join();
+    }
+
+//    for (auto & thr : thread_pool)
+//        thr.join();
+
+    std::for_each(hits.begin(), hits.end(), [] (std::vector<Hit> & hitvec)
+    {
+        std::sort(hitvec.begin(), hitvec.end(), [] (Hit const & a, Hit const & b)
         {
             if (a.pos != b.pos)
                 return a.pos < b.pos;
@@ -108,6 +105,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, uns
                 return a.midx < b.midx;
             return a.score < b.score;
         });
+    });
 
     size_t num_results = 0;
     #pragma omp parallel for num_threads(threads)
