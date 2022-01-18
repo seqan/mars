@@ -22,7 +22,7 @@ int main(int argc, char ** argv)
     // Start reading the genome and creating the index asyncronously
     mars::BiDirectionalIndex bds{settings.xdrop};
     std::future<void> index_future = std::async(std::launch::async, &mars::BiDirectionalIndex::create, &bds,
-                                                settings.genome_file);
+                                                settings.genome_file, settings.compress_index);
 
     // Generate motifs from the MSA
     std::vector<mars::StemloopMotif> motifs = mars::create_motifs(settings.alignment_file, settings.threads);

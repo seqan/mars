@@ -16,7 +16,8 @@ Msa read_msa(std::filesystem::path const & filepath)
         return std::move(msa);
     }
     else if (filepath.extension() == std::filesystem::path{".sth"} ||
-             filepath.extension() == std::filesystem::path{".stk"})
+             filepath.extension() == std::filesystem::path{".stk"} ||
+             filepath.extension() == std::filesystem::path{".sto"})
     {
         return std::move(read_stockholm_file<typename Msa::Alphabet>(filepath));
     }

@@ -30,57 +30,48 @@ void read_genome(std::vector<seqan3::dna4_vector> & seqs,
     }
 }
 
-void write_index(Index const & index, std::vector<std::string> const & names, std::filesystem::path & indexpath)
+void write_index(Index const & index, std::vector<std::string> const & names, std::filesystem::path & indexpath,
+                 bool compress)
 {
 #ifdef SEQAN3_HAS_ZLIB
-    indexpath += ".gz";
-#endif
-    std::ofstream ofs{indexpath, std::ios::binary};
-    if (ofs)
+    if (compress)
     {
-        // Write the index to disk, including a version string.
-#ifdef SEQAN3_HAS_ZLIB
-        seqan3::contrib::gz_ostream gzstream(ofs);
-        cereal::BinaryOutputArchive oarchive{gzstream};
-#else
-        cereal::BinaryOutputArchive oarchive{ofs};
-#endif
-        std::string const version{"1 mars bi_fm_index<dna4,collection>\n"};
-        oarchive(version);
-        oarchive(index);
-        oarchive(names);
-#ifdef SEQAN3_HAS_ZLIB
-        gzstream.flush();
-#endif
+        indexpath += ".gz";
+        std::ofstream ofs{indexpath, std::ios::binary};
+        if (ofs)
+        {
+            // Write the index to disk, including a version string.
+            seqan3::contrib::gz_ostream gzstream(ofs);
+            cereal::BinaryOutputArchive oarchive{gzstream};
+            std::string const version{"1 mars bi_fm_index<dna4,collection>\n"};
+            oarchive(version);
+            oarchive(index);
+            oarchive(names);
+            gzstream.flush();
+        }
+        ofs.close();
     }
-    ofs.close();
+    else
+#endif
+    {
+        std::ofstream ofs{indexpath, std::ios::binary};
+        if (ofs)
+        {
+            // Write the index to disk, including a version string.
+            cereal::BinaryOutputArchive oarchive{ofs};
+            std::string const version{"1 mars bi_fm_index<dna4,collection>\n"};
+            oarchive(version);
+            oarchive(index);
+            oarchive(names);
+        }
+        ofs.close();
+    }
 }
 
 bool read_index(Index & index, std::vector<std::string> & names, std::filesystem::path & indexpath)
 {
     bool success = false;
-#ifdef SEQAN3_HAS_ZLIB
-    std::filesystem::path gzindexpath = indexpath;
-    gzindexpath += ".gz";
-    if (std::filesystem::exists(gzindexpath))
-    {
-        std::ifstream ifs{gzindexpath, std::ios::binary};
-        if (ifs.good())
-        {
-            seqan3::contrib::gz_istream gzstream(ifs);
-            cereal::BinaryInputArchive iarchive{gzstream};
-            std::string version;
-            iarchive(version);
-            assert(version[0] == '1');
-            iarchive(index);
-            iarchive(names);
-            success = true;
-            indexpath = gzindexpath;
-        }
-        ifs.close();
-    }
-#endif
-    if (!success && std::filesystem::exists(indexpath))
+    if (std::filesystem::exists(indexpath))
     {
         std::ifstream ifs{indexpath, std::ios::binary};
         if (ifs.good())
@@ -95,6 +86,30 @@ bool read_index(Index & index, std::vector<std::string> & names, std::filesystem
         }
         ifs.close();
     }
+#ifdef SEQAN3_HAS_ZLIB
+    if (!success)
+    {
+        std::filesystem::path gzindexpath = indexpath;
+        gzindexpath += ".gz";
+        if (std::filesystem::exists(gzindexpath))
+        {
+            std::ifstream ifs{gzindexpath, std::ios::binary};
+            if (ifs.good())
+            {
+                seqan3::contrib::gz_istream gzstream(ifs);
+                cereal::BinaryInputArchive iarchive{gzstream};
+                std::string version;
+                iarchive(version);
+                assert(version[0] == '1');
+                iarchive(index);
+                iarchive(names);
+                success = true;
+                indexpath = gzindexpath;
+            }
+            ifs.close();
+        }
+    }
+#endif
     return success;
 }
 

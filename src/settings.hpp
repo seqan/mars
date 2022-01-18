@@ -17,6 +17,7 @@ struct Settings
     unsigned char xdrop{4};
     unsigned int threads{1};
     float min_score_per_motif{5.f};
+    bool compress_index{false};
 
     bool parse_arguments(int argc, char ** argv);
 };

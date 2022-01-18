@@ -9,7 +9,7 @@
 namespace mars
 {
 
-void BiDirectionalIndex::create(std::filesystem::path const & filepath)
+void BiDirectionalIndex::create(std::filesystem::path const & filepath, bool compress)
 {
     if (filepath.empty())
         return;
@@ -36,7 +36,7 @@ void BiDirectionalIndex::create(std::filesystem::path const & filepath)
         // Generate the BiFM index.
         index = Index{seqs};
         cursors.emplace_back(index);
-        write_index(index, names, indexpath);
+        write_index(index, names, indexpath, compress);
         if (verbose > 0)
             std::cerr << "Created index ==> " << indexpath << std::endl;
     }

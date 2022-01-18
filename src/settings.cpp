@@ -33,7 +33,7 @@ bool Settings::parse_arguments(int argc, char ** argv)
                       "Alignment file of structurally aligned RNA sequences, "
                       "or a motif file to restore previously calculated motifs.",
                       seqan3::option_spec::standard,
-                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk", "json"}});
+                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk", "sto", "json"}});
 
     parser.add_option(motif_file, 'm', "motif", "File for storing the motifs.", seqan3::option_spec::standard,
                       seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"json"}});
@@ -41,7 +41,7 @@ bool Settings::parse_arguments(int argc, char ** argv)
     parser.add_option(alignment_file, 'a', "alignment",
                       "Alignment file of structurally aligned RNA sequences.",
                       seqan3::option_spec::standard,
-                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk"}});
+                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk", "sto"}});
 #endif
 
     //output path as option, otherwise output is printed
@@ -63,6 +63,11 @@ bool Settings::parse_arguments(int argc, char ** argv)
 
     parser.add_option(verbose, 'v', "verbose",
                       "Level of printing status information.");
+
+#ifdef SEQAN3_HAS_ZLIB
+    parser.add_option(compress_index, 'z', "gzip",
+                      "Use gzip compression for the index file.");
+#endif
 
     try
     {

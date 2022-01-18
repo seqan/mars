@@ -27,9 +27,11 @@ void read_genome(std::vector<seqan3::dna4_vector> & seqs,
  * \brief Archive an index and store it in a file on disk.
  * \param[in] index The index that should be archived.
  * \param[in] names The sequence names.
- * \param[in] indexpath The path of the index output file.
+ * \param[in,out] indexpath The path of the index output file.
+ * \param[in] compress Use gzip compression for creating the index file.
  */
-void write_index(Index const & index, std::vector<std::string> const & names, std::filesystem::path & indexpath);
+void write_index(Index const & index, std::vector<std::string> const & names, std::filesystem::path & indexpath,
+                 bool compress);
 
 /*!
  * \brief Unarchive an index and read it from a file on disk.
