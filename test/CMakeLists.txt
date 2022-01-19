@@ -42,7 +42,7 @@ macro (add_app_test test_filename test_alternative)
 
     # Create the test target.
     add_executable (${target} ${test_filename})
-    target_link_libraries (${target} motif io structure seqan3::seqan3 gtest_all pthread)
+    target_link_libraries (${target} seqan3::seqan3 settings io msa motif gtest_all)
 
     # Make seqan3::test available for both cli and api tests.
     target_include_directories(${target} PUBLIC "${SEQAN3_CLONE_DIR}/test/include")
@@ -55,6 +55,7 @@ macro (add_app_test test_filename test_alternative)
         add_dependencies (api_test ${target})
     endif ()
     target_include_directories(${target} PUBLIC "${SEQAN3_CLONE_DIR}/test")
+    target_include_directories(${target} PUBLIC ../../src ../../lib/thread_pool)
 
     # Generate and set the test name.
     get_filename_component (target_relative_path "${source_file}" DIRECTORY)

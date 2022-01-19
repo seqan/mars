@@ -9,43 +9,40 @@
 namespace mars
 {
 
-void BiDirectionalIndex::create(std::filesystem::path const & filepath, bool compress)
+void BiDirectionalIndex::create()
 {
-    if (filepath.empty())
+    if (settings.genome_file.empty())
         return;
 
-    std::filesystem::path indexpath = filepath;
+    std::filesystem::path indexpath = settings.genome_file;
     indexpath += ".marsindex";
 
     // Check whether an index already exists.
     if (read_index(index, names, indexpath))
     {
         cursors.emplace_back(index);
-        if (verbose > 0)
-            std::cerr << "Using existing index <== " << indexpath << std::endl;
+        logger(1, "Using existing index <== " << indexpath << std::endl);
         return;
     }
 
     // No index found: read genome and create an index.
-    if (std::filesystem::exists(filepath))
+    if (std::filesystem::exists(settings.genome_file))
     {
-        if (verbose > 0)
-            std::cerr << "Read genome <== " << filepath << std::endl;
+        logger(1, "Read genome <== " << settings.genome_file << std::endl);
         std::vector<seqan3::dna4_vector> seqs{};
-        read_genome(seqs, names, filepath);
+        read_genome(seqs, names, settings.genome_file);
         // Generate the BiFM index.
         index = Index{seqs};
         cursors.emplace_back(index);
-        write_index(index, names, indexpath, compress);
-        if (verbose > 0)
-            std::cerr << "Created index ==> " << indexpath << std::endl;
+        write_index(index, names, indexpath, settings.compress_index);
+        logger(1, "Created index ==> " << indexpath << std::endl);
     }
     else
     {
         std::ostringstream err_msg{};
-        err_msg << "Could not find the genome file <== " << filepath << "[.marsindex";
+        err_msg << "Could not find the genome file <== " << settings.genome_file << "[.marsindex";
 #ifdef SEQAN3_HAS_ZLIB
-        err_msg << ".gz";
+        err_msg << "[.gz]";
 #endif
         err_msg << "]";
         throw seqan3::file_open_error(err_msg.str());
@@ -97,10 +94,10 @@ void BiDirectionalIndex::backtrack()
 
 bool BiDirectionalIndex::xdrop() const
 {
-    if (scores.size() < xdrop_dist)
+    if (scores.size() < settings.xdrop)
         return false;
     else
-        return scores.back() < scores[scores.size() - xdrop_dist];
+        return scores.back() < scores[scores.size() - settings.xdrop];
 }
 
 void BiDirectionalIndex::compute_hits(std::vector<std::vector<Hit>> & hits, StemloopMotif const & motif) const

@@ -88,32 +88,30 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
     return std::move(stemloops);
 }
 
-std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment_file, unsigned int threads)
+std::vector<StemloopMotif> create_motifs()
 {
-    if (alignment_file.empty())
+    if (settings.alignment_file.empty())
         return {};
-    else if (alignment_file.extension().string().find("json") != std::string::npos)
-        return std::move(restore_motifs(alignment_file));
+    else if (settings.alignment_file.extension().string().find("json") != std::string::npos)
+        return std::move(restore_motifs(settings.alignment_file));
 
     // Read the alignment
-    Msa msa = read_msa(alignment_file);
+    Msa msa = read_msa(settings.alignment_file);
 
     // Find the stem loops
     std::vector<StemloopMotif> motifs = detect_stemloops(msa.structure.first, msa.structure.second);
 
     // Create a structure motif for each stemloop
-    std::for_each(motifs.begin(), motifs.end(), [&msa] (StemloopMotif & motif)
-    {
-        motif.analyze(msa);
-    });
+    std::vector<std::future<void>> futures;
+    for (StemloopMotif & motif : motifs)
+        futures.push_back(pool->submit(&StemloopMotif::analyze, &motif, msa));
 
-    if (verbose > 0)
-    {
-        std::cerr << "Found " << motifs.size() << " stem loops <== " << alignment_file << std::endl;
-        if (verbose > 1)
-            for (auto const & motif : motifs)
-                std::cerr << motif << std::endl;
-    }
+    for (auto & future : futures)
+        future.wait();
+
+    logger(1, "Found " << motifs.size() << " stem loops <== " << settings.alignment_file << std::endl);
+    for (auto const & motif : motifs)
+        logger(2, motif << std::endl);
     return std::move(motifs);
 }
 
@@ -320,18 +318,17 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
     return os;
 }
 
-void store_rssp(std::filesystem::path const & rssp_file, std::vector<StemloopMotif> const & motifs)
+void store_rssp(std::vector<StemloopMotif> const & motifs)
 {
-    if (rssp_file.empty() || motifs.empty())
+    if (settings.structator_file.empty() || motifs.empty())
         return;
 
-    std::ofstream ofs(rssp_file);
+    std::ofstream ofs(settings.structator_file);
     if (ofs)
     {
         for (auto const & motif : motifs)
             motif.print_rssp(ofs);
-        if (mars::verbose > 0)
-            std::cerr << "Stored " << motifs.size() << " motifs ==> " << rssp_file << std::endl;
+        logger(1, "Stored " << motifs.size() << " motifs ==> " << settings.structator_file << std::endl);
     }
     ofs.close();
 }
@@ -349,19 +346,18 @@ std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_fi
         if (version[0] == '1')
         {
             iarchive(motifs);
-            if (verbose > 0)
-                std::cerr << "Restored " << motifs.size() << " motifs <== " << motif_file << std::endl;
+            logger(1, "Restored " << motifs.size() << " motifs <== " << motif_file << std::endl);
         }
     }
     ifs.close();
     return std::move(motifs);
 }
 
-void store_motifs(std::filesystem::path const & motif_file, std::vector<StemloopMotif> const & motifs)
+void store_motifs(std::vector<StemloopMotif> const & motifs)
 {
-    if (motif_file.empty() || motifs.empty())
+    if (settings.motif_file.empty() || motifs.empty())
         return;
-    std::ofstream ofs{motif_file, std::ios::binary};
+    std::ofstream ofs{settings.motif_file, std::ios::binary};
     if (ofs)
     {
         // Write the index to disk, including a version string.
@@ -369,8 +365,7 @@ void store_motifs(std::filesystem::path const & motif_file, std::vector<Stemloop
         std::string const version{"1 mars vector<StemloopMotif>\n"};
         oarchive(version);
         oarchive(motifs);
-        if (verbose > 0)
-            std::cerr << "Stored " << motifs.size() << " motifs ==> " << motif_file << std::endl;
+        logger(1, "Stored " << motifs.size() << " motifs ==> " << settings.motif_file << std::endl);
     }
     ofs.close();
 }

@@ -3,6 +3,7 @@
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
 
 #include "index.hpp"
+#include "settings.hpp"
 
 // Generate the full path of a test input file that is provided in the data directory.
 std::filesystem::path data(std::string const & filename)
@@ -13,8 +14,10 @@ std::filesystem::path data(std::string const & filename)
 TEST(Index, Create)
 {
     // from fasta file
-    mars::BiDirectionalIndex bds(4);
-    EXPECT_NO_THROW(bds.create(data("genome.fa"), true));
+    mars::BiDirectionalIndex bds{};
+    mars::settings.genome_file = data("genome.fa");
+    mars::settings.compress_index = true;
+    EXPECT_NO_THROW(bds.create());
 #ifdef SEQAN3_HAS_ZLIB
     std::filesystem::path const indexfile = data("genome.fa.marsindex.gz");
 #else
@@ -24,11 +27,13 @@ TEST(Index, Create)
     std::filesystem::remove(indexfile);
 
     // from archive
-    EXPECT_NO_THROW(bds.create(data("genome2.fa"), false));
+    mars::settings.genome_file = data("genome2.fa");
+    EXPECT_NO_THROW(bds.create());
 
     // from compressed archive
 #ifdef SEQAN3_HAS_ZLIB
-    EXPECT_NO_THROW(bds.create(data("genome3.fa"), false));
+    mars::settings.genome_file = data("genome3.fa");
+    EXPECT_NO_THROW(bds.create());
 #endif
 }
 
@@ -36,8 +41,9 @@ TEST(Index, BiDirectionalIndex)
 {
     using seqan3::operator""_rna4;
 
-    mars::BiDirectionalIndex bds(4);
-    bds.create(data("RF00005.fa"), false);
+    mars::BiDirectionalIndex bds{};
+    mars::settings.genome_file = data("RF00005.fa");
+    bds.create();
     mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
 
     EXPECT_TRUE(bds.append_loop({1.f, 'A'_rna4}, false));

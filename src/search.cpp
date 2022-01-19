@@ -54,10 +54,9 @@ void SearchGenerator::recurse_search(StemloopMotif const & motif, ElementIter co
         recurse_search<MotifElement>(motif, elem_it, idx + len);
 }
 
-void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, unsigned threads, float min_score)
+void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs)
 {
-    if (mars::verbose > 0)
-        std::cerr << "Start the motif search...\n";
+    logger(2, "Start the motif search...\n");
     assert(motifs.size() <= UINT8_MAX);
     uint8_t const num_motifs = motifs.size();
     hits.resize(bds.number_of_seq());
@@ -65,29 +64,19 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, uns
     for (auto const & motif : motifs)
         bds.update_max_offset(motif.bounds.first);
 
-    std::mutex mutex_cerr;
-
     std::vector<std::thread> thread_pool(1);
     for (StemloopMotif const & motif : motifs)
     {
-        thread_pool[0] = std::thread([this, motif, &mutex_cerr]
+        thread_pool[0] = std::thread([this, motif]
         {
-            if (verbose > 0)
-            {
-                std::lock_guard<std::mutex> guard(mutex_cerr);
-                std::cerr << " Start " << (+motif.uid + 1) << std::endl;
-            }
+            logger(2, " Start " << (+motif.uid + 1) << std::endl);
             // start with the hairpin
             auto const iter = motif.elements.crbegin();
             if (std::holds_alternative<LoopElement>(*iter))
                 recurse_search<LoopElement>(motif, iter, 0);
             else
                 recurse_search<StemElement>(motif, iter, 0);
-            if (verbose > 0)
-            {
-                std::lock_guard<std::mutex> guard(mutex_cerr);
-                std::cerr << " Finish " << (+motif.uid + 1) << std::endl;
-            }
+            logger(2, " Finish " << (+motif.uid + 1) << std::endl);
         });
         thread_pool[0].join();
     }
@@ -108,7 +97,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, uns
     });
 
     size_t num_results = 0;
-    #pragma omp parallel for num_threads(threads)
+    //#pragma omp parallel for num_threads(threads)
     for (size_t sidx = 0u; sidx < bds.number_of_seq(); ++sidx)
     {
         std::vector<Hit> const & hitvec = hits[sidx];
@@ -151,7 +140,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, uns
 
             base_pos -= static_cast<long long>(bds.get_max_offset());
 
-            if (diversity > 0 && hit_score > num_motifs * min_score)
+            if (diversity > 0 && hit_score > num_motifs * settings.min_score_per_motif)
             {
                 #pragma omp critical (nres)
                 {
@@ -163,8 +152,7 @@ void SearchGenerator::find_motifs(std::vector<StemloopMotif> const & motifs, uns
             left_end = right_end;
         } while (right_end != hitvec.cend());
     }
-    if (verbose > 1)
-        std::cerr << "Found " << num_results << " matches." << std::endl;
+    logger(2, "Found " << num_results << " matches." << std::endl);
 }
 
 } // namespace mars

@@ -180,11 +180,10 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif);
 
 /*!
  * \brief Create the motif descriptors by analysing a multiple sequence-structure alignment.
- * \param alignment_file The filepath containing the MSA.
  * \param threads The maximum number of threads allowed for execution.
  * \return A vector of motifs.
  */
-std::vector<StemloopMotif> create_motifs(std::filesystem::path const & alignment_file, unsigned int threads);
+std::vector<StemloopMotif> create_motifs();
 
 /*!
  * \brief Extract the positions of the stem loops.
@@ -219,10 +218,9 @@ unsigned short get_profile_rank(profile_char<alph_type> const & prof)
 
 /*!
  * \brief Write the motifs in rssp format for Structator.
- * \param rssp_file The filename of the output file.
  * \param motifs the motif vector.
  */
-void store_rssp(std::filesystem::path const & rssp_file, std::vector<StemloopMotif> const & motifs);
+void store_rssp(std::vector<StemloopMotif> const & motifs);
 
 #if SEQAN3_WITH_CEREAL
 /*!
@@ -234,10 +232,9 @@ std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_fi
 
 /*!
  * \brief Write the motifs to a file.
- * \param motif_file The filename where the motifs are stored.
  * \param motifs The motifs.
  */
-void store_motifs(std::filesystem::path const & motif_file, std::vector<StemloopMotif> const & motifs);
+void store_motifs(std::vector<StemloopMotif> const & motifs);
 #endif
 
 } // namespace mars

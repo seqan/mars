@@ -60,7 +60,7 @@ public:
         locations{}
     {}
 
-    void find_motifs(std::vector<StemloopMotif> const & motifs, unsigned threads, float min_score);
+    void find_motifs(std::vector<StemloopMotif> const & motifs);
 
     std::set<MotifLocation, MotifLocationCompare> const & get_locations() const
     {

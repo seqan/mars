@@ -8,10 +8,15 @@
 namespace mars
 {
 
-unsigned short verbose{0};
+std::unique_ptr<thread_pool::ThreadPool> pool;
+std::mutex mutex_cerr;
+Settings settings{};
 
 bool Settings::parse_arguments(int argc, char ** argv)
 {
+    unsigned int nthreads{std::thread::hardware_concurrency()};
+    nthreads = nthreads != 0u ? nthreads : 1u;
+
     seqan3::argument_parser parser{"mars", argc, argv};
     parser.info.short_description = "Motif-based aligned RNA searcher";
     parser.info.author = "Jörg Winkler";
@@ -58,8 +63,8 @@ bool Settings::parse_arguments(int argc, char ** argv)
     parser.add_option(xdrop, 'x', "xdrop",
                       "The xdrop parameter. Smaller values increase speed but we will find less matches.");
 
-    parser.add_option(threads, 'j', "threads",
-                      "Use the number of specified threads. Value 0 tries to detect the maximum number.");
+    parser.add_option(nthreads, 'j', "threads",
+                      "Use the number of specified threads.");
 
     parser.add_option(verbose, 'v', "verbose",
                       "Level of printing status information.");
@@ -79,12 +84,7 @@ bool Settings::parse_arguments(int argc, char ** argv)
         return false;
     }
 
-    if (threads == 0u)
-    {
-        unsigned int nthreads = std::thread::hardware_concurrency();
-        threads = nthreads != 0u ? nthreads : 1u;
-    }
-
+    pool = std::make_unique<thread_pool::ThreadPool>(nthreads);
     return true;
 }
 

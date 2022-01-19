@@ -44,30 +44,22 @@ private:
     //! \brief The maximum possible motif offset.
     size_t max_offset;
 
-    //! \brief The xdrop parameter.
-    unsigned char const xdrop_dist;
-
 public:
     /*!
      * \brief Constructor for a bi-directional search.
-     * \param xdrop The xdrop parameter.
      */
-    explicit BiDirectionalIndex(unsigned char xdrop):
+    BiDirectionalIndex():
         index{},
         names{},
         cursors{},
         scores{},
-        max_offset{},
-        xdrop_dist{xdrop}
+        max_offset{}
     {
         scores.emplace_back(0);
     }
 
     /*!
      * \brief Create an index of a genome from the specified file.
-     * \param filepath The filepath to the file.
-     * \param compress Use gzip compression for creating an index file.
-     * \return a valid index of the genome.
      * \throws seqan3::file_open_error if neither `filepath` nor `filepath.marsindex` exist.
      *
      * \details
@@ -78,7 +70,7 @@ public:
      * 2. Else if `filepath` exists: Read sequences from this file, create an index
      *    and write the index to `filepath.marsindex`.
      */
-    void create(std::filesystem::path const & filepath, bool compress);
+    void create();
 
     /*!
      * \brief Append a character to the 5' (left) side of the query.

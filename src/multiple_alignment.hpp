@@ -42,4 +42,10 @@ typedef MultipleAlignment<seqan3::rna15> Msa;
  */
 Msa read_msa(std::filesystem::path const & filepath);
 
+/*!
+ * \brief Compute the secondary structure of a given multiple structural alignment.
+ * \param msa The multiple structural alignment.
+ */
+void compute_structure(Msa & msa);
+
 } // namespace mars
