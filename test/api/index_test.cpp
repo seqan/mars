@@ -2,7 +2,9 @@
 
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
 
+#include "bi_alphabet.hpp"
 #include "index.hpp"
+#include "search.hpp"
 #include "settings.hpp"
 
 // Generate the full path of a test input file that is provided in the data directory.
@@ -45,23 +47,23 @@ TEST(Index, BiDirectionalIndex)
     mars::settings.genome_file = data("RF00005.fa");
     bds.create();
     mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
-
-    EXPECT_TRUE(bds.append_loop({1.f, 'A'_rna4}, false));
-    EXPECT_TRUE(bds.append_stem({2.f, ba}));
-    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, true));
-    EXPECT_TRUE(bds.append_loop({0.f, 'G'_rna4}, false));
-    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, false));
-    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, false));
-    EXPECT_TRUE(bds.append_stem({0.5f, ba}));
-    bds.backtrack();
-    EXPECT_TRUE(bds.append_loop({0.f, 'A'_rna4}, false));
-    EXPECT_TRUE(bds.append_loop({0.f, 'G'_rna4}, false));
-    EXPECT_FALSE(bds.xdrop());
-    EXPECT_TRUE(bds.append_loop({0.f, 'G'_rna4}, false));
-    EXPECT_FALSE(bds.append_loop({0.f, 'G'_rna4}, false));
-
-    std::vector<std::vector<mars::Hit>> hits(10);
+    mars::HitStore hits(10);
     mars::StemloopMotif motif{0, {27, 47}};
-    bds.compute_hits(hits, motif);
-    EXPECT_EQ(hits.size(), 10ul);
+    mars::SearchInfo info{bds.raw(), motif, hits};
+
+    EXPECT_TRUE(info.append_loop({1.f, 'A'_rna4}, false));
+    EXPECT_TRUE(info.append_stem({2.f, ba}));
+    EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, true));
+    EXPECT_TRUE(info.append_loop({0.f, 'G'_rna4}, false));
+    EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, false));
+    EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, false));
+    EXPECT_TRUE(info.append_stem({0.5f, ba}));
+    info.backtrack();
+    EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, false));
+    EXPECT_TRUE(info.append_loop({0.f, 'G'_rna4}, false));
+    EXPECT_FALSE(info.xdrop());
+    EXPECT_TRUE(info.append_loop({0.f, 'G'_rna4}, false));
+    EXPECT_FALSE(info.append_loop({0.f, 'G'_rna4}, false));
+
+    EXPECT_NO_THROW(info.compute_hits());
 }

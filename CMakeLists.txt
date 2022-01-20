@@ -106,7 +106,6 @@ endif ()
 # OpenMP is needed for IPknot.
 if (OpenMP_CXX_FOUND)
     target_link_libraries (IPknot PUBLIC OpenMP::OpenMP_CXX)
-    add_definitions (-DMARS_WITH_OPENMP)
 else()
     message (STATUS "OpenMP_CXX not found.")
     set (DEPENDENCIES_FOUND FALSE)

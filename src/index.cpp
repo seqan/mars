@@ -1,13 +1,116 @@
-#include <iostream>
+#include <seqan3/alphabet/nucleotide/dna15.hpp>
+#include <seqan3/io/sequence_file/input.hpp>
 
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/search/search.hpp>
+#ifdef SEQAN3_HAS_ZLIB
+    #include <seqan3/contrib/stream/gz_istream.hpp>
+    #include <seqan3/contrib/stream/gz_ostream.hpp>
+#endif
 
 #include "index.hpp"
 #include "settings.hpp"
 
 namespace mars
 {
+
+void BiDirectionalIndex::read_genome(std::vector<seqan3::dna4_vector> & seqs)
+{
+    struct dna4_traits : seqan3::sequence_file_input_default_traits_dna
+    {
+        using sequence_alphabet = seqan3::dna4;
+        using sequence_legal_alphabet = seqan3::dna15;
+    };
+    std::filesystem::path const & filepath = settings.genome_file;
+    seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::seq, seqan3::field::id>> reader{filepath};
+    reader.options.truncate_ids = true;
+
+    for (auto & [seq, name] : reader)
+    {
+        seqs.push_back(std::move(seq));
+        names.push_back(std::move(name));
+    }
+}
+
+void BiDirectionalIndex::write_index(std::filesystem::path & indexpath)
+{
+#ifdef SEQAN3_HAS_ZLIB
+    if (settings.compress_index)
+    {
+        indexpath += ".gz";
+        std::ofstream ofs{indexpath, std::ios::binary};
+        if (ofs)
+        {
+            // Write the index to disk, including a version string.
+            seqan3::contrib::gz_ostream gzstream(ofs);
+            cereal::BinaryOutputArchive oarchive{gzstream};
+            std::string const version{"1 mars bi_fm_index<dna4,collection>\n"};
+            oarchive(version);
+            oarchive(index);
+            oarchive(names);
+            gzstream.flush();
+        }
+        ofs.close();
+    }
+    else
+#endif
+    {
+        std::ofstream ofs{indexpath, std::ios::binary};
+        if (ofs)
+        {
+            // Write the index to disk, including a version string.
+            cereal::BinaryOutputArchive oarchive{ofs};
+            std::string const version{"1 mars bi_fm_index<dna4,collection>\n"};
+            oarchive(version);
+            oarchive(index);
+            oarchive(names);
+        }
+        ofs.close();
+    }
+}
+
+bool BiDirectionalIndex::read_index(std::filesystem::path & indexpath)
+{
+    bool success = false;
+    if (std::filesystem::exists(indexpath))
+    {
+        std::ifstream ifs{indexpath, std::ios::binary};
+        if (ifs.good())
+        {
+            cereal::BinaryInputArchive iarchive{ifs};
+            std::string version;
+            iarchive(version);
+            assert(version[0] == '1');
+            iarchive(index);
+            iarchive(names);
+            success = true;
+        }
+        ifs.close();
+    }
+#ifdef SEQAN3_HAS_ZLIB
+    if (!success)
+    {
+        std::filesystem::path gzindexpath = indexpath;
+        gzindexpath += ".gz";
+        if (std::filesystem::exists(gzindexpath))
+        {
+            std::ifstream ifs{gzindexpath, std::ios::binary};
+            if (ifs.good())
+            {
+                seqan3::contrib::gz_istream gzstream(ifs);
+                cereal::BinaryInputArchive iarchive{gzstream};
+                std::string version;
+                iarchive(version);
+                assert(version[0] == '1');
+                iarchive(index);
+                iarchive(names);
+                success = true;
+                indexpath = gzindexpath;
+            }
+            ifs.close();
+        }
+    }
+#endif
+    return success;
+}
 
 void BiDirectionalIndex::create()
 {
@@ -18,9 +121,8 @@ void BiDirectionalIndex::create()
     indexpath += ".marsindex";
 
     // Check whether an index already exists.
-    if (read_index(index, names, indexpath))
+    if (read_index(indexpath))
     {
-        cursors.emplace_back(index);
         logger(1, "Using existing index <== " << indexpath << std::endl);
         return;
     }
@@ -30,11 +132,10 @@ void BiDirectionalIndex::create()
     {
         logger(1, "Read genome <== " << settings.genome_file << std::endl);
         std::vector<seqan3::dna4_vector> seqs{};
-        read_genome(seqs, names, settings.genome_file);
+        read_genome(seqs);
         // Generate the BiFM index.
         index = Index{seqs};
-        cursors.emplace_back(index);
-        write_index(index, names, indexpath, settings.compress_index);
+        write_index(indexpath);
         logger(1, "Created index ==> " << indexpath << std::endl);
     }
     else
@@ -46,68 +147,6 @@ void BiDirectionalIndex::create()
 #endif
         err_msg << "]";
         throw seqan3::file_open_error(err_msg.str());
-    }
-}
-
-bool BiDirectionalIndex::append_loop(std::pair<float, seqan3::rna4> item, bool left)
-{
-    bool succ;
-    seqan3::bi_fm_index_cursor<Index> new_cur(cursors.back());
-
-    if (left)
-        succ = new_cur.extend_left(item.second);
-    else
-        succ = new_cur.extend_right(item.second);
-
-    if (succ)
-    {
-        cursors.push_back(new_cur);
-        scores.push_back(scores.back() + item.first);
-    }
-    return succ;
-}
-
-bool BiDirectionalIndex::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item)
-{
-    seqan3::bi_fm_index_cursor<Index> new_cur(cursors.back());
-    using seqan3::get;
-    seqan3::rna4 c = get<0>(stem_item.second);
-    bool succ = new_cur.extend_left(c);
-    if (succ)
-    {
-        c = get<1>(stem_item.second);
-        succ = new_cur.extend_right(c);
-    }
-    if (succ)
-    {
-        cursors.push_back(new_cur);
-        scores.push_back(scores.back() + stem_item.first);
-    }
-    return succ;
-}
-
-void BiDirectionalIndex::backtrack()
-{
-    scores.pop_back();
-    cursors.pop_back();
-}
-
-bool BiDirectionalIndex::xdrop() const
-{
-    if (scores.size() < settings.xdrop)
-        return false;
-    else
-        return scores.back() < scores[scores.size() - settings.xdrop];
-}
-
-void BiDirectionalIndex::compute_hits(std::vector<std::vector<Hit>> & hits, StemloopMotif const & motif) const
-{
-    for (auto && [seq, pos] : cursors.back().locate())
-    {
-        assert(seq < hits.size());
-        hits[seq].emplace_back(pos + max_offset - motif.bounds.first,
-                               motif.uid,
-                               scores.back());
     }
 }
 

@@ -16,7 +16,6 @@
 #endif
 
 #include "motif.hpp"
-#include "multiple_alignment.hpp"
 #include "settings.hpp"
 
 namespace mars
