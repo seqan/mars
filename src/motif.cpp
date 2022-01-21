@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <deque>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <seqan3/std/ranges>
 #include <set>
@@ -114,20 +115,45 @@ std::vector<StemloopMotif> create_motifs()
     return std::move(motifs);
 }
 
-// private helper function for analyze
+// private helper functions for analyze()
 void check_gaps(int & current_gap, std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, int col, bool is_gap)
 {
-    if (is_gap && current_gap == -1)
+    if (is_gap && current_gap == -1) // gap start
     {
         current_gap = col;
     }
-    else if (!is_gap && current_gap > -1)
+    else if (!is_gap && current_gap > -1) // gap end
     {
         auto[iter, succ] = gaps[col - 1].emplace(col - current_gap, 1);
         if (!succ)
             ++(iter->second);
         current_gap = -1;
     }
+};
+
+void filter_gaps(std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, SeqNum depth)
+{
+    for (auto & map : gaps)
+    {
+        auto iter = map.begin();
+        while (iter != map.end())
+        {
+            if (iter->second * 200 <= depth * settings.prune) // erase if gap ratio < p/2 %
+                iter = map.erase(iter);
+            else
+                ++iter;
+        }
+    }
+}
+
+void filter_profile(auto & queue)
+{
+    auto ptr = queue.cbegin();
+    while (ptr != queue.cend() && ptr->first < log2f(settings.prune/100.f))
+        ++ptr;
+    if (ptr == queue.cend()) // avoid empty profile
+        --ptr;
+    queue.erase(queue.cbegin(), ptr); // erase if ratio < p %
 };
 
 void StemloopMotif::analyze(Msa const & msa)
@@ -157,6 +183,7 @@ void StemloopMotif::analyze(Msa const & msa)
             }
             elem.profile.push_back(prof);
             elem.prio.push_back(prof.priority(depth));
+            filter_profile(elem.prio.back());
             ++left;
             --right;
         }
@@ -165,6 +192,7 @@ void StemloopMotif::analyze(Msa const & msa)
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps, elem.profile.size(), false);
 
+        filter_gaps(elem.gaps, depth);
         elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
     };
@@ -187,6 +215,7 @@ void StemloopMotif::analyze(Msa const & msa)
             }
             elem.profile.push_back(prof);
             elem.prio.push_back(prof.priority(depth));
+            filter_profile(elem.prio.back());
             bpidx += (elem.is_5prime ? 1 : -1);
         }
         while (bpseq[bpidx] < bounds.first || bpseq[bpidx] > bounds.second);
@@ -194,6 +223,7 @@ void StemloopMotif::analyze(Msa const & msa)
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps, elem.profile.size(), false);
 
+        filter_gaps(elem.gaps, depth);
         elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
     };
@@ -210,11 +240,8 @@ void StemloopMotif::analyze(Msa const & msa)
             make_loop(left, true);
         else
         {
-            std::cerr << "Unexpected condition!";
-            for (int bp : bpseq)
-                std::cerr << " " << bp;
-            std::cerr << std::endl;
-            exit(2); // prevent endless loop
+            logger(0, "Unexpected condition! " << bpseq << std::endl);
+            throw std::runtime_error("The structure is inconsistent."); // prevent endless loop
         }
     }
     length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
@@ -287,9 +314,9 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
 
 std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
 {
-    os << "[" << +motif.uid << "] MOTIF pos = (" << motif.bounds.first << ", "
-       << motif.bounds.second << "), len = (" << motif.length.min << ", " << motif.length.max << ", "
-       << motif.length.mean << ")\n";
+    os << "[" << +motif.uid << "] MOTIF pos = (" << motif.bounds.first << ".."
+       << motif.bounds.second << "), len = (" << motif.length.min << ".." << motif.length.max << "), avg= "
+       << std::fixed << std::setprecision(1) << motif.length.mean << "\n";
     for (auto const & el : motif.elements)
     {
         std::visit([&os] (auto element)
@@ -299,18 +326,39 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
             else
                 os << "\tStem ";
 
-            os << "L=(" << element.length.min << ", " << element.length.max << ", " << element.length.mean << ") :\t";
+            os << "L=(" << element.length.min << ".." << element.length.max << "), avg= "
+               << std::fixed << std::setprecision(1) << element.length.mean << ":\t";
 
-            for (auto const & profile_char : element.profile)
-                os << profile_char << ' ';
-            os << "\n\tGaps: ";
-            for (int idx = 0; idx < element.gaps.size(); ++idx)
-                if (!element.gaps[idx].empty())
+            for (int idx = element.prio.size() - 1; idx >= 0 ; --idx)
+            {
+                if (!element.prio[idx].empty())
                 {
-                    os << "\t" << idx << ": ";
-                    for (auto && [key, val] : element.gaps[idx])
-                        os << "(" << key << "," << val << ")";
+                    auto iter = element.prio[idx].crbegin();
+                    if constexpr (std::is_same_v<decltype(element), StemElement>)
+                    {
+                        auto [ch1, ch2] = iter->second.to_chars();
+                        os << "(" << ch1 << ch2;
+                        for (++iter; iter != element.prio[idx].crend(); ++iter)
+                        {
+                            auto [ch3, ch4] = iter->second.to_chars();
+                            os << "," << ch3 << ch4;
+                        }
+                    }
+                    else
+                    {
+                        os << "(" << iter->second.to_char();
+                        for (++iter; iter != element.prio[idx].crend(); ++iter)
+                            os << "," << iter->second.to_char();
+                    }
+                    if (!element.gaps[idx].empty())
+                        os << ",";
                 }
+                else
+                    os << "(";
+                for (auto && [key, val] : element.gaps[idx])
+                    os << key << "-";
+                os << ") ";
+            }
             os << "\n";
         }, el);
      }

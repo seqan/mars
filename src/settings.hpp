@@ -28,8 +28,10 @@ struct Settings
     std::filesystem::path structator_file{};
     unsigned char xdrop{4};
     float min_score_per_motif{5.f};
+    unsigned char prune{10};
     bool compress_index{false};
     unsigned short verbose{1};
+
     bool parse_arguments(int argc, char ** argv);
 };
 

@@ -104,8 +104,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
 
     // try gaps
     for (auto && [len, num] : elem.gaps[elem.gaps.size() - idx - 1])
-        if (num * 10 > info.motif_depth())
-            recurse_search<MotifElement>(info, elem_it, idx + len);
+        recurse_search<MotifElement>(info, elem_it, idx + len);
 }
 
 std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalIndex const & index,
@@ -113,14 +112,13 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
 {
     HitStore hits(index.seq_count());
 
-    logger(2, "Start the motif search...\n");
+    logger(1, "Stem loop search...");
     assert(motifs.size() <= UINT8_MAX);
     uint8_t const num_motifs = motifs.size();
 
     std::vector<std::future<void>> futures;
     for (size_t idx = 0; idx < num_motifs; ++idx)
     {
-        logger(2, " Start " << (idx + 1) << std::endl);
         futures.push_back(pool->submit([idx, &index, &motifs, &hits]
         {
             SearchInfo info(index.raw(), motifs[idx], hits);
@@ -131,11 +129,12 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
                 recurse_search<LoopElement>(info, iter, 0);
             else
                 recurse_search<StemElement>(info, iter, 0);
-            logger(2, " Finish " << (idx + 1) << std::endl);
+            logger(1, " " << (idx + 1));
         }));
     }
     for (auto & future : futures)
         future.wait();
+    logger(1, " finished." << std::endl);
 
     std::set<MotifLocation, MotifLocationCompare> locations{};
     std::mutex mutex_locations;
@@ -192,7 +191,7 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
                     hit_score += score;
                 }
 
-                if (diversity > 0 && hit_score > num_motifs * settings.min_score_per_motif)
+                if (diversity > num_motifs / 4 && hit_score * 2 > num_motifs * settings.min_score_per_motif)
                 {
                     std::lock_guard<std::mutex> guard(mutex_locations);
                     locations.emplace(hit_score, diversity, base_pos, sidx);
@@ -206,7 +205,6 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
     for (auto & future : futures)
         future.wait();
 
-    logger(2, "Found " << locations.size() << " matches." << std::endl);
     return std::move(locations);
 }
 
@@ -225,14 +223,14 @@ void print_locations(std::set<MotifLocation, MotifLocationCompare> const & locat
 
     if (!settings.result_file.empty())
     {
-        logger(1, "Writing results ==> " << mars::settings.result_file << std::endl);
+        logger(1, "Writing " << locations.size() << " results ==> " << mars::settings.result_file << std::endl);
         std::ofstream file_stream(mars::settings.result_file);
         print_results(file_stream);
         file_stream.close();
     }
     else
     {
-        logger(1, "Writing results ==> stdout" << std::endl);
+        logger(1, "Writing " << locations.size() << " results ==> stdout" << std::endl);
         print_results(std::cout);
     }
 }

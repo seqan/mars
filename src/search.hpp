@@ -136,11 +136,6 @@ public:
         return motif.elements.crend();
     }
 
-    size_t motif_depth() const
-    {
-        return motif.depth;
-    }
-
     /*!
      * \brief Perform the search with the current query and store the result in `hits`.
      */

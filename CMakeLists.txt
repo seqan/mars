@@ -48,7 +48,8 @@ if (NOT ViennaRNA_FOUND)
             URL_HASH MD5=530b5ce7caf0e7cf58535cad22265215
             LOG_CONFIGURE 1
             USES_TERMINAL_CONFIGURE 1
-            CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --without-swig --without-kinfold
+            CONFIGURE_COMMAND <SOURCE_DIR>/configure CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER}
+                --prefix=<INSTALL_DIR> --without-swig --without-kinfold
                 --without-forester --without-rnalocmin --without-doc --without-tutorial
             LOG_BUILD 1
             USES_TERMINAL_BUILD 1
