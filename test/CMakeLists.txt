@@ -41,21 +41,20 @@ macro (add_app_test test_filename test_alternative)
     get_filename_component (target "${source_file}" NAME_WE)
 
     # Create the test target.
-    add_executable (${target} ${test_filename})
-    target_link_libraries (${target} seqan3::seqan3 settings index msa motif search gtest_all)
+    add_executable (${target} ${test_filename} $<TARGET_OBJECTS:lib${PROJECT_NAME}>)
 
     # Make seqan3::test available for both cli and api tests.
-    target_include_directories(${target} PUBLIC "${SEQAN3_CLONE_DIR}/test/include")
+    target_include_directories(${target} PUBLIC ${SEQAN3_CLONE_DIR}/test/include ${SEQAN3_CLONE_DIR}/test)
+    target_include_directories(${target} PUBLIC ../../src ../../lib/thread_pool)
+    target_link_libraries (${target} seqan3::seqan3 pthread IPknot gtest_all)
 
     # Add the test to its general target (cli or api).
     if (${test_alternative} STREQUAL "CLI_TEST")
-        add_dependencies (${target} "${PROJECT_NAME}") # cli test needs the application executable
+        add_dependencies (${target} ${PROJECT_NAME}) # cli test needs the application executable
         add_dependencies (cli_test ${target})
     elseif (${test_alternative} STREQUAL "API_TEST")
         add_dependencies (api_test ${target})
     endif ()
-    target_include_directories(${target} PUBLIC "${SEQAN3_CLONE_DIR}/test")
-    target_include_directories(${target} PUBLIC ../../src ../../lib/thread_pool)
 
     # Generate and set the test name.
     get_filename_component (target_relative_path "${source_file}" DIRECTORY)

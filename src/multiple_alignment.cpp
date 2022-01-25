@@ -17,15 +17,15 @@ Msa read_msa(std::filesystem::path const & filepath)
     if (filepath.extension() == std::filesystem::path{".aln"} ||
         filepath.extension() == std::filesystem::path{".msa"})
     {
-        Msa msa = std::move(read_clustal_file<typename Msa::Alphabet>(filepath));
+        Msa msa = read_clustal_file<typename Msa::Alphabet>(filepath);
         compute_structure(msa);
-        return std::move(msa);
+        return msa;
     }
     else if (filepath.extension() == std::filesystem::path{".sth"} ||
              filepath.extension() == std::filesystem::path{".stk"} ||
              filepath.extension() == std::filesystem::path{".sto"})
     {
-        return std::move(read_stockholm_file<typename Msa::Alphabet>(filepath));
+        return read_stockholm_file<typename Msa::Alphabet>(filepath);
     }
     else
     {

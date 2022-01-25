@@ -10,7 +10,7 @@ list (APPEND gtest_project_args "-DCMAKE_INSTALL_LIBDIR=${PROJECT_BINARY_DIR}/li
 include (ExternalProject)
 ExternalProject_Add (googletest
                      GIT_REPOSITORY    "https://github.com/google/googletest.git"
-                     GIT_TAG           "release-1.10.0"
+                     GIT_TAG           "release-1.11.0"
                      GIT_SHALLOW
                      PREFIX            "${CMAKE_CURRENT_BINARY_DIR}/googletest"
                      CMAKE_ARGS        "${gtest_project_args}"

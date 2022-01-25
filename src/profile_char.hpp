@@ -294,7 +294,7 @@ public:
         {
             return x / static_cast<float>(one);
         });
-        return std::move(tmp);
+        return tmp;
     }
 
     /*!

@@ -179,7 +179,7 @@ MultipleAlignment<alphabet_type> read_stockholm_file(std::istream & stream)
     while (!seqan3::is_char<'/'>(*stream_view.begin())); // end of stockholm record
 
     parse_structure(msa.structure, wuss_string);
-    return std::move(msa);
+    return msa;
 }
 
 /*!
@@ -198,7 +198,7 @@ MultipleAlignment<alphabet_type> read_stockholm_file(std::filesystem::path const
 
     auto result = read_stockholm_file<alphabet_type>(stream);
     stream.close();
-    return std::move(result);
+    return result;
 }
 
 } // namespace mars

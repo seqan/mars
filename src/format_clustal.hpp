@@ -114,7 +114,7 @@ MultipleAlignment<alphabet_type> read_clustal_file(std::istream & stream)
         ++idx;
     } while (std::istreambuf_iterator<char>{stream} != std::istreambuf_iterator<char>{});
 
-    return std::move(msa);
+    return msa;
 }
 
 /*!
@@ -133,7 +133,7 @@ MultipleAlignment<alphabet_type> read_clustal_file(std::filesystem::path const &
 
     auto result = read_clustal_file<alphabet_type>(stream);
     stream.close();
-    return std::move(result);
+    return result;
 }
 
 } // namespace mars

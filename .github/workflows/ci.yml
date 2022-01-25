@@ -8,11 +8,12 @@ on:
   pull_request:
 
 env:
-  CMAKE_VERSION: 3.8.2
+  CMAKE_VERSION: 3.13.5
   DOXYGEN_VERSION: 1.9.1
   VIENNA_VERSION: 2.4.17
   SEQAN3_NO_VERSION_CHECK: 1
   TZ: Europe/Berlin
+  GCCWARN: "-Wall -Wextra -pedantic -Werror"
 
 defaults:
   run:
@@ -251,7 +252,7 @@ jobs:
         run: |
           mkdir app-build
           cd app-build
-          cmake ../app -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}"
+          cmake ../app -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }} ${CWARN}"
 
       - name: Build tests
         env:
@@ -264,9 +265,9 @@ jobs:
           ccache -p || true
           cd app-build
           if [[ "${{ matrix.build }}" =~ ^(documentation)$ ]]; then
-            make -k -j2 doc 2>doxygen_warnings.txt
+            make -k -j4 doc 2>doxygen_warnings.txt
           else
-            make -k -j2
+            make -k -j4
           fi
 
       - name: Run tests
@@ -276,7 +277,7 @@ jobs:
           if [[ "${{ matrix.build }}" =~ ^(documentation)$ ]]; then
             cat doxygen_warnings.txt && test ! -s doxygen_warnings.txt
           else
-            ctest . -j2 --output-on-failure
+            ctest . -j4 --output-on-failure
           fi
 
       - name: Submit coverage build

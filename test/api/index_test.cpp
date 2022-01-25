@@ -46,18 +46,19 @@ TEST(Index, BiDirectionalIndex)
     mars::BiDirectionalIndex bds{};
     mars::settings.genome_file = data("RF00005.fa");
     bds.create();
-    mars::bi_alphabet ba{'U'_rna4, 'C'_rna4};
+    mars::bi_alphabet bia{'U'_rna4, 'C'_rna4};
     mars::HitStore hits(10);
     mars::StemloopMotif motif{0, {27, 47}};
+    motif.length.max = 20;
     mars::SearchInfo info{bds.raw(), motif, hits};
 
     EXPECT_TRUE(info.append_loop({1.f, 'A'_rna4}, false));
-    EXPECT_TRUE(info.append_stem({2.f, ba}));
+    EXPECT_TRUE(info.append_stem({2.f, bia}));
     EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, true));
     EXPECT_TRUE(info.append_loop({0.f, 'G'_rna4}, false));
     EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, false));
     EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, false));
-    EXPECT_TRUE(info.append_stem({0.5f, ba}));
+    EXPECT_TRUE(info.append_stem({0.5f, bia}));
     info.backtrack();
     EXPECT_TRUE(info.append_loop({0.f, 'A'_rna4}, false));
     EXPECT_TRUE(info.append_loop({0.f, 'G'_rna4}, false));

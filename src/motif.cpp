@@ -62,7 +62,7 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
         if (pk == -1) // skip unpaired
             continue;
 
-        while (pk + 1 > pk_infos.size()) // allocate a new pseudoknot layer
+        while (pk + 1 > static_cast<int>(pk_infos.size())) // allocate a new pseudoknot layer
             pk_infos.push_back({0, false, {0, 0}});
 
         PkInfo & status = pk_infos[pk];
@@ -85,7 +85,7 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
             ++status.level;
         }
     }
-    return std::move(stemloops);
+    return stemloops;
 }
 
 std::vector<StemloopMotif> create_motifs()
@@ -112,7 +112,7 @@ std::vector<StemloopMotif> create_motifs()
     logger(1, "Found " << motifs.size() << " stem loops <== " << settings.alignment_file << std::endl);
     for (auto const & motif : motifs)
         logger(2, motif << std::endl);
-    return std::move(motifs);
+    return motifs;
 }
 
 // private helper functions for analyze()
@@ -129,7 +129,7 @@ void check_gaps(int & current_gap, std::vector<std::unordered_map<MotifLen, SeqN
             ++(iter->second);
         current_gap = -1;
     }
-};
+}
 
 void filter_gaps(std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, SeqNum depth)
 {
@@ -154,7 +154,7 @@ void filter_profile(auto & queue)
     if (ptr == queue.cend()) // avoid empty profile
         --ptr;
     queue.erase(queue.cbegin(), ptr); // erase if ratio < p %
-};
+}
 
 void StemloopMotif::analyze(Msa const & msa)
 {
@@ -355,8 +355,8 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
                 }
                 else
                     os << "(";
-                for (auto && [key, val] : element.gaps[idx])
-                    os << key << "-";
+                for (auto const & gap : element.gaps[idx])
+                    os << gap.first << "-";
                 os << ") ";
             }
             os << "\n";
@@ -397,7 +397,7 @@ std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_fi
         }
     }
     ifs.close();
-    return std::move(motifs);
+    return motifs;
 }
 
 void store_motifs(std::vector<StemloopMotif> const & motifs)

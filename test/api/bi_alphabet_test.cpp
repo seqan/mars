@@ -121,5 +121,5 @@ using bi_types = ::testing::Types<mars::bi_alphabet<seqan3::rna4>,
                                   mars::bi_alphabet<seqan3::dna4>,
                                   mars::bi_alphabet<seqan3::dna5>>;
 
-INSTANTIATE_TYPED_TEST_SUITE_P(BiAlphabet, semi_alphabet_test, bi_types, );
-INSTANTIATE_TYPED_TEST_SUITE_P(BiAlphabet, semi_alphabet_constexpr, bi_types, );
+INSTANTIATE_TYPED_TEST_SUITE_P(BiAlphabet, semi_alphabet_test, bi_types);
+INSTANTIATE_TYPED_TEST_SUITE_P(BiAlphabet, semi_alphabet_constexpr, bi_types);

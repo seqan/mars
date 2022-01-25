@@ -103,8 +103,8 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
     }
 
     // try gaps
-    for (auto && [len, num] : elem.gaps[elem.gaps.size() - idx - 1])
-        recurse_search<MotifElement>(info, elem_it, idx + len);
+    for (auto const & len_num : elem.gaps[elem.gaps.size() - idx - 1])
+        recurse_search<MotifElement>(info, elem_it, idx + len_num.first);
 }
 
 std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalIndex const & index,
@@ -205,7 +205,7 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
     for (auto & future : futures)
         future.wait();
 
-    return std::move(locations);
+    return locations;
 }
 
 void print_locations(std::set<MotifLocation, MotifLocationCompare> const & locations,
