@@ -7,6 +7,16 @@
 namespace mars
 {
 
+std::ostream & operator<<(std::ostream & ostr, Hit const & hit)
+{
+    return ostr << "(" << +hit.midx << "|" << hit.pos << ", " << hit.length << ", " << hit.score << ")";
+}
+
+bool operator<(Hit const & hit1, Hit const & hit2)
+{
+    return hit1.pos < hit2.pos;
+}
+
 bool SearchInfo::append_loop(std::pair<float, seqan3::rna4> item, bool left)
 {
     bool succ;
@@ -29,12 +39,12 @@ bool SearchInfo::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_it
 {
     seqan3::bi_fm_index_cursor<Index> new_cur(cursors.back());
     using seqan3::get;
-    seqan3::rna4 c = get<0>(stem_item.second);
-    bool succ = new_cur.extend_left(c);
+    seqan3::rna4 chr = get<0>(stem_item.second);
+    bool succ = new_cur.extend_left(chr);
     if (succ)
     {
-        c = get<1>(stem_item.second);
-        succ = new_cur.extend_right(c);
+        chr = get<1>(stem_item.second);
+        succ = new_cur.extend_right(chr);
     }
     if (succ)
     {
@@ -52,6 +62,8 @@ void SearchInfo::backtrack()
 
 bool SearchInfo::xdrop() const
 {
+    if (cursors.back().query_length() > motif.length.max)
+        return true;
     if (scores.size() < settings.xdrop)
         return false;
     else
@@ -60,8 +72,10 @@ bool SearchInfo::xdrop() const
 
 void SearchInfo::compute_hits() const
 {
-    for (auto && [seq, pos] : cursors.back().locate())
-        hits.push(seq, pos - motif.bounds.first, motif.uid, scores.back());
+    long long const len = static_cast<long long>(cursors.back().query_length());
+    if (len > 0 && scores.back() > 0)
+        for (auto && [seq, pos] : cursors.back().locate())
+            hits.push(seq, static_cast<long long>(pos) - motif.bounds.first, len, motif.uid, scores.back());
 }
 
 template <typename MotifElement>
@@ -107,8 +121,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
         recurse_search<MotifElement>(info, elem_it, idx + len_num.first);
 }
 
-std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalIndex const & index,
-                                                          std::vector<StemloopMotif> const & motifs)
+SortedLocations find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motifs)
 {
     HitStore hits(index.seq_count());
 
@@ -136,8 +149,9 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
         future.wait();
     logger(1, " finished." << std::endl);
 
-    std::set<MotifLocation, MotifLocationCompare> locations{};
+    SortedLocations locations{};
     std::mutex mutex_locations;
+    size_t const db_len = index.raw().size() - (index.seq_count() > 1 ? index.seq_count() : 2);
 
     futures.clear();
     for (size_t sidx = 0u; sidx < index.seq_count(); ++sidx)
@@ -145,60 +159,53 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
         if (hits.get(sidx).empty())
             continue;
 
-        futures.push_back(pool->submit([sidx, num_motifs, &mutex_locations, &locations, &hits]
+        futures.push_back(pool->submit([sidx, &motifs, &mutex_locations, &locations, &hits, db_len]
         {
             std::vector<Hit> & hitvec = hits.get(sidx);
-            std::sort(hitvec.begin(), hitvec.end(), [] (Hit const & hit1, Hit const & hit2)
-            {
-                if (hit1.pos != hit2.pos)
-                    return hit1.pos < hit2.pos;
-                if (hit1.midx != hit2.midx)
-                    return hit1.midx < hit2.midx;
-                return hit1.score < hit2.score;
-            });
-
+            std::sort(hitvec.begin(), hitvec.end()); // sort by genome position
             auto left_end = hitvec.cbegin();
             auto right_end = left_end;
+            auto const stop = hitvec.cend();
 
             do
             {
-                std::vector<float> max_score(num_motifs, 0.f);
-                std::vector<Hit> selection{};
-                while (right_end != hitvec.cend() && right_end->pos <= left_end->pos + 30)
+                std::vector<std::vector<Hit>::const_iterator> best_hits(motifs.size(), stop);
+                // we allow a position divergence of half alignment length
+                while (right_end != stop && right_end->pos <= left_end->pos + motifs.back().bounds.second / 2)
                 {
-                    selection.push_back(*right_end);
+                    auto & iter = best_hits[right_end->midx];
+                    if (iter == stop || iter->score < right_end->score)
+                        iter = right_end;
                     ++right_end;
                 }
-                std::sort(selection.begin(), selection.end(), [] (Hit const & hit1, Hit const & hit2)
+
+                long long pos_min{LLONG_MAX};
+                long long pos_max{0};
+                long long query_len{0};
+                float bit_score{0};
+                uint8_t diversity{0}; // number of different motifs found
+
+                for (auto & hit : best_hits)
                 {
-                    if (hit1.midx != hit2.midx)
-                        return hit1.midx < hit2.midx;
-                    return hit1.score > hit2.score;
-                });
-                long long base_pos = static_cast<long long>(selection.begin()->pos);
-                for (Hit & hit : selection)
-                {
-                    int pos_diff = static_cast<int>(hit.pos - base_pos);
-                    hit.score = static_cast<float>(std::max(0.0, hit.score - (0.1 * pos_diff * pos_diff)));
-                    max_score[hit.midx] = std::max(max_score[hit.midx], hit.score);
+                    if (hit != stop)
+                    {
+                        pos_min = std::min(hit->pos + motifs[hit->midx].bounds.first, pos_min);
+                        pos_max = std::max(hit->pos + hit->length + motifs[hit->midx].bounds.first, pos_max);
+                        bit_score += hit->score;
+                        query_len += hit->length;
+                        ++diversity;
+                    }
                 }
 
-                uint8_t diversity = 0; // number of different motifs found
-                float hit_score = 0;
-                for (float score : max_score)
+                double evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
+                if (evalue <= settings.max_evalue)
                 {
-                    diversity += score > 0.f ? 1 : 0;
-                    hit_score += score;
-                }
-
-                if (diversity > num_motifs / 4 && hit_score * 2 > num_motifs * settings.min_score_per_motif)
-                {
-                    std::lock_guard<std::mutex> guard(mutex_locations);
-                    locations.emplace(hit_score, diversity, base_pos, sidx);
+                    std::lock_guard<std::mutex> grd(mutex_locations);
+                    locations.emplace(evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx);
                 }
 
                 left_end = right_end;
-            } while (right_end != hitvec.cend());
+            } while (right_end != stop);
         })); // end of thread pool execution
     }
 
@@ -208,17 +215,18 @@ std::set<MotifLocation, MotifLocationCompare> find_motifs(mars::BiDirectionalInd
     return locations;
 }
 
-void print_locations(std::set<MotifLocation, MotifLocationCompare> const & locations,
-                     mars::BiDirectionalIndex const & index)
+void print_locations(SortedLocations const & locations, BiDirectionalIndex const & index)
 {
     auto print_results = [&locations, &index] (std::ostream & out)
     {
         if (!locations.empty())
-            out << " " << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
-                << "pos" << "\t" << "n" << "\t" << "score" << std::endl;
+            out << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
+                << "pos" << "\t" << "end" << "\t" << "qlen" << "\t" << "n" << "\t" << "score" << "\t" << "e-value"
+                << std::endl;
         for (mars::MotifLocation const & loc : locations)
-            out << ">" << std::left << std::setw(35) << index.seq_name(loc.sequence) << "\t" << loc.sequence << "\t"
-                << loc.position << "\t" << +loc.num_stemloops << "\t" << loc.score << std::endl;
+            out << std::left << std::setw(35) << index.seq_name(loc.sequence) << "\t" << loc.sequence << "\t"
+                << loc.position_start << "\t" << loc.position_end << "\t" << loc.query_length << "\t"
+                << +loc.num_stemloops << "\t" << loc.score << "\t" << loc.evalue << std::endl;
     };
 
     if (!settings.result_file.empty())

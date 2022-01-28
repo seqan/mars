@@ -21,37 +21,54 @@ using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>
 
 struct MotifLocation
 {
+    double evalue;
     float score;
     uint8_t num_stemloops;
-    long long position;
+    size_t position_start;
+    size_t position_end;
+    size_t query_length;
     size_t sequence;
 
-    MotifLocation(float s, uint8_t n, long long p, size_t i):
-        score{s}, num_stemloops{n}, position{p}, sequence{i}
+    MotifLocation(double eval, float sco, uint8_t num, size_t spos, size_t epos, size_t len, size_t seq):
+        evalue{eval}, score{sco}, num_stemloops{num}, position_start{spos}, position_end{epos}, query_length{len},
+        sequence{seq}
     {}
 };
 
 struct MotifLocationCompare {
-    bool operator()(MotifLocation const & a, MotifLocation const & b) const
+    bool operator()(MotifLocation const & loc1, MotifLocation const & loc2) const
     {
-        if (a.score != b.score)
-            return a.score > b.score;
-        if (a.num_stemloops != b.num_stemloops)
-            return a.num_stemloops > b.num_stemloops;
-        if (a.sequence != b.sequence)
-            return a.sequence < b.sequence;
-        return a.position < b.position;
+        if (loc1.evalue != loc2.evalue)
+            return loc1.evalue < loc2.evalue;
+        if (loc1.score != loc2.score)
+            return loc1.score > loc2.score;
+        if (loc1.num_stemloops != loc2.num_stemloops)
+            return loc1.num_stemloops > loc2.num_stemloops;
+        if (loc1.query_length != loc2.query_length)
+            return loc1.query_length > loc2.query_length;
+        if (loc1.sequence != loc2.sequence)
+            return loc1.sequence < loc2.sequence;
+        if (loc1.position_start != loc2.position_start)
+            return loc1.position_start < loc2.position_start;
+        return loc1.position_end < loc2.position_end;
     }
 };
+
+using SortedLocations = std::set<MotifLocation, MotifLocationCompare>;
 
 struct Hit
 {
     long long pos;
+    long long length;
     uint8_t midx;
     float score;
 
-    Hit(long long pos, uint8_t midx, float score) : pos{pos}, midx{midx}, score{score} {}
+    Hit(long long pos, long long length, uint8_t midx, float score) : pos{pos}, length{length}, midx{midx}, score{score} {}
 };
+
+bool operator<(Hit const & hit1, Hit const & hit2);
+
+std::ostream & operator<<(std::ostream & ostr, Hit const & hit);
 
 struct HitStore
 {
@@ -65,10 +82,10 @@ public:
         hits.resize(seq_count);
     }
 
-    void push(size_t seq, long long pos, uint8_t midx, float score)
+    void push(size_t seq, long long pos, long long length, uint8_t midx, float score)
     {
         std::lock_guard<std::mutex> guard(mutex_hits);
-        hits[seq].emplace_back(pos, midx, score);
+        hits[seq].emplace_back(pos, length, midx, score);
     }
 
     std::vector<Hit> & get(size_t idx)

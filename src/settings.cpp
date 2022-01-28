@@ -59,8 +59,8 @@ bool Settings::parse_arguments(int argc, char ** argv)
                       seqan3::option_spec::standard,
                       seqan3::arithmetic_range_validator{0,100});
 
-    parser.add_option(min_score_per_motif, 's', "scorefilter",
-                      "Minimum score per motif that a hit must achieve. Influences the output of low-scoring hits.");
+    parser.add_option(max_evalue, 'e', "evalue",
+                      "Maximum e-value for result list. Influences the output of low-scoring hits.");
 
     parser.add_option(xdrop, 'x', "xdrop",
                       "The xdrop parameter. Smaller values increase speed but we will find less matches.");

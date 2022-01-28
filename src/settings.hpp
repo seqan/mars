@@ -27,7 +27,7 @@ struct Settings
     std::filesystem::path result_file{};
     std::filesystem::path structator_file{};
     unsigned char xdrop{4};
-    float min_score_per_motif{5.f};
+    double max_evalue{0.1};
     unsigned char prune{10};
     bool compress_index{false};
     unsigned short verbose{1};

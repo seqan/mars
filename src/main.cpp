@@ -24,7 +24,7 @@ int main(int argc, char ** argv)
     // Wait for index creation process
     future_index.wait();
 
-    if (!motifs.empty() && !mars::settings.genome_file.empty())
+    if (!motifs.empty() && !index.raw().empty())
     {
         // Search the genome for motifs
         auto locations = mars::find_motifs(index, motifs);
@@ -36,7 +36,7 @@ int main(int argc, char ** argv)
     }
     else
     {
-        logger(1, "No genome provided: skipping search step." << std::endl);
+        logger(1, "No genome sequence provided: skipping search step." << std::endl);
     }
     future_json.wait();
     future_rssp.wait();

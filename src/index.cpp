@@ -130,13 +130,16 @@ void BiDirectionalIndex::create()
     // No index found: read genome and create an index.
     if (std::filesystem::exists(settings.genome_file))
     {
-        logger(1, "Read genome <== " << settings.genome_file << std::endl);
         std::vector<seqan3::dna4_vector> seqs{};
         read_genome(seqs);
-        // Generate the BiFM index.
-        index = Index{seqs};
-        write_index(indexpath);
-        logger(1, "Created index ==> " << indexpath << std::endl);
+        logger(1, "Read " << seqs.size() << " genome sequences <== " << settings.genome_file << std::endl);
+        if (!seqs.empty())
+        {
+            // Generate the BiFM index.
+            index = Index{seqs};
+            write_index(indexpath);
+            logger(1, "Created index ==> " << indexpath << std::endl);
+        }
     }
     else
     {
