@@ -30,6 +30,7 @@ struct Settings
     double max_evalue{0.1};
     unsigned char prune{10};
     bool compress_index{false};
+    bool exterior{true};
     unsigned short verbose{1};
 
     bool parse_arguments(int argc, char ** argv);

@@ -72,8 +72,8 @@ bool SearchInfo::xdrop() const
 
 void SearchInfo::compute_hits() const
 {
-    long long const len = static_cast<long long>(cursors.back().query_length());
-    if (len > 0 && scores.back() > 0)
+    auto const len = static_cast<long long>(cursors.back().query_length());
+    if (len >= motif.length.min && scores.back() > 0)
         for (auto && [seq, pos] : cursors.back().locate())
             hits.push(seq, static_cast<long long>(pos) - motif.bounds.first, len, motif.uid, scores.back());
 }

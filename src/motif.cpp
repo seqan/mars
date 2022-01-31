@@ -85,6 +85,19 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
             ++status.level;
         }
     }
+    if (settings.exterior) // add long external and multiloops
+    {
+        MotifLen pos = 0;
+        size_t const len = stemloops.size();
+        for (size_t idx = 0; idx < len; ++idx) // no iterators, because we modify the vector
+        {
+            if (stemloops[idx].bounds.first > pos + 19u)
+                stemloops.emplace_back(id_cnt++, Coordinate{pos, stemloops[idx].bounds.first - 1u});
+            pos = stemloops[idx].bounds.second;
+        }
+        if (bpseq.size() > pos + 19u || stemloops.empty())
+            stemloops.emplace_back(id_cnt, Coordinate{pos, bpseq.size() - 1u});
+    }
     return stemloops;
 }
 

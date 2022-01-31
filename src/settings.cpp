@@ -65,6 +65,9 @@ bool Settings::parse_arguments(int argc, char ** argv)
     parser.add_option(xdrop, 'x', "xdrop",
                       "The xdrop parameter. Smaller values increase speed but we will find less matches.");
 
+    parser.add_option(exterior, 'l', "exterior",
+                      "Consider long exterior and multibranch loops as well.");
+
     parser.add_option(nthreads, 'j', "threads",
                       "Use the number of specified threads.");
 

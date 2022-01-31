@@ -33,11 +33,13 @@ TEST(Motif, Detection)
                              0, 0, 0, 0, 0, 0, 0,-1};
 
     std::vector<mars::StemloopMotif> motifs = mars::detect_stemloops(bpseq, plevel);
-    EXPECT_EQ(motifs.size(), 2u);
+    EXPECT_EQ(motifs.size(), 3u);
     EXPECT_EQ(motifs[0].bounds, (mars::Coordinate{27, 47}));
     EXPECT_EQ(motifs[1].bounds, (mars::Coordinate{54, 68}));
+    EXPECT_EQ(motifs[2].bounds, (mars::Coordinate{0, 26}));
     EXPECT_EQ(motifs[0].uid, 0);
     EXPECT_EQ(motifs[1].uid, 1);
+    EXPECT_EQ(motifs[2].uid, 2);
 }
 
 TEST(Motif, AnalyzeStemLoop)
