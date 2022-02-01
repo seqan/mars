@@ -27,8 +27,7 @@ int main(int argc, char ** argv)
     if (!motifs.empty() && !index.raw().empty())
     {
         // Search the genome for motifs
-        auto locations = mars::find_motifs(index, motifs);
-        mars::print_locations(locations, index);
+        mars::find_motifs(index, motifs);
     }
     else if (motifs.empty())
     {

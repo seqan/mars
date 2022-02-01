@@ -7,16 +7,6 @@
 namespace mars
 {
 
-std::ostream & operator<<(std::ostream & ostr, Hit const & hit)
-{
-    return ostr << "(" << +hit.midx << "|" << hit.pos << ", " << hit.length << ", " << hit.score << ")";
-}
-
-bool operator<(Hit const & hit1, Hit const & hit2)
-{
-    return hit1.pos < hit2.pos;
-}
-
 bool SearchInfo::append_loop(std::pair<float, seqan3::rna4> item, bool left)
 {
     bool succ;
@@ -75,7 +65,7 @@ void SearchInfo::compute_hits() const
     auto const len = static_cast<long long>(cursors.back().query_length());
     if (len >= motif.length.min && scores.back() > 0)
         for (auto && [seq, pos] : cursors.back().locate())
-            hits.push(seq, static_cast<long long>(pos) - motif.bounds.first, len, motif.uid, scores.back());
+            hits.push({static_cast<long long>(pos) - motif.bounds.first, len, motif.uid, scores.back()}, seq);
 }
 
 template <typename MotifElement>
@@ -121,7 +111,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
         recurse_search<MotifElement>(info, elem_it, idx + len_num.first);
 }
 
-SortedLocations find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motifs)
+void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motifs)
 {
     HitStore hits(index.seq_count());
 
@@ -149,8 +139,7 @@ SortedLocations find_motifs(mars::BiDirectionalIndex const & index, std::vector<
         future.wait();
     logger(1, " finished." << std::endl);
 
-    SortedLocations locations{};
-    std::mutex mutex_locations;
+    SortedLocations locations(index);
     size_t const db_len = index.raw().size() - (index.seq_count() > 1 ? index.seq_count() : 2);
 
     futures.clear();
@@ -159,7 +148,7 @@ SortedLocations find_motifs(mars::BiDirectionalIndex const & index, std::vector<
         if (hits.get(sidx).empty())
             continue;
 
-        futures.push_back(pool->submit([sidx, &motifs, &mutex_locations, &locations, &hits, db_len]
+        futures.push_back(pool->submit([sidx, &motifs, &locations, &hits, db_len]
         {
             std::vector<Hit> & hitvec = hits.get(sidx);
             std::sort(hitvec.begin(), hitvec.end()); // sort by genome position
@@ -179,9 +168,9 @@ SortedLocations find_motifs(mars::BiDirectionalIndex const & index, std::vector<
                     ++right_end;
                 }
 
-                long long pos_min{LLONG_MAX};
-                long long pos_max{0};
-                long long query_len{0};
+                size_t pos_min{LLONG_MAX};
+                size_t pos_max{0};
+                size_t query_len{0};
                 float bit_score{0};
                 uint8_t diversity{0}; // number of different motifs found
 
@@ -189,20 +178,17 @@ SortedLocations find_motifs(mars::BiDirectionalIndex const & index, std::vector<
                 {
                     if (hit != stop)
                     {
-                        pos_min = std::min(hit->pos + motifs[hit->midx].bounds.first, pos_min);
-                        pos_max = std::max(hit->pos + hit->length + motifs[hit->midx].bounds.first, pos_max);
+                        pos_min = std::min(static_cast<size_t>(hit->pos + motifs[hit->midx].bounds.first), pos_min);
+                        pos_max = std::max(static_cast<size_t>(hit->pos + hit->length + motifs[hit->midx].bounds.first),
+                                           pos_max);
                         bit_score += hit->score;
                         query_len += hit->length;
                         ++diversity;
                     }
                 }
 
-                double evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
-                if (evalue <= settings.max_evalue)
-                {
-                    std::lock_guard<std::mutex> grd(mutex_locations);
-                    locations.emplace(evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx);
-                }
+                double const evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
+                locations.push({evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx});
 
                 left_end = right_end;
             } while (right_end != stop);
@@ -212,35 +198,7 @@ SortedLocations find_motifs(mars::BiDirectionalIndex const & index, std::vector<
     for (auto & future : futures)
         future.wait();
 
-    return locations;
-}
-
-void print_locations(SortedLocations const & locations, BiDirectionalIndex const & index)
-{
-    auto print_results = [&locations, &index] (std::ostream & out)
-    {
-        if (!locations.empty())
-            out << std::left << std::setw(35) << "sequence name" << "\t" << "index" << "\t"
-                << "pos" << "\t" << "end" << "\t" << "qlen" << "\t" << "n" << "\t" << "score" << "\t" << "e-value"
-                << std::endl;
-        for (mars::MotifLocation const & loc : locations)
-            out << std::left << std::setw(35) << index.seq_name(loc.sequence) << "\t" << loc.sequence << "\t"
-                << loc.position_start << "\t" << loc.position_end << "\t" << loc.query_length << "\t"
-                << +loc.num_stemloops << "\t" << loc.score << "\t" << loc.evalue << std::endl;
-    };
-
-    if (!settings.result_file.empty())
-    {
-        logger(1, "Writing " << locations.size() << " results ==> " << mars::settings.result_file << std::endl);
-        std::ofstream file_stream(mars::settings.result_file);
-        print_results(file_stream);
-        file_stream.close();
-    }
-    else
-    {
-        logger(1, "Writing " << locations.size() << " results ==> stdout" << std::endl);
-        print_results(std::cout);
-    }
+    locations.print();
 }
 
 } // namespace mars

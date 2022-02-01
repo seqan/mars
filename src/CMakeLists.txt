@@ -3,6 +3,7 @@ cmake_minimum_required (VERSION 3.13)
 # Create an object library that is shared between main and tests.
 add_library(lib${PROJECT_NAME} OBJECT
         index.cpp
+        location.cpp
         motif.cpp
         multiple_alignment.cpp
         search.cpp
