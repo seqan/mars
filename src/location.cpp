@@ -75,7 +75,7 @@ void SortedLocations::print_results(std::ostream & out)
             << std::endl;
     }
     while (++iter != cend() && iter->evalue < thr);
-};
+}
 
 bool operator<(Hit const & hit1, Hit const & hit2)
 {

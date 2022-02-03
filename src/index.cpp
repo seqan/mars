@@ -17,17 +17,39 @@ void BiDirectionalIndex::read_genome(std::vector<seqan3::dna4_vector> & seqs)
     struct dna4_traits : seqan3::sequence_file_input_default_traits_dna
     {
         using sequence_alphabet = seqan3::dna4;
-        using sequence_legal_alphabet = seqan3::dna15;
     };
-    std::filesystem::path const & filepath = settings.genome_file;
-    seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::seq, seqan3::field::id>> reader{filepath};
-    reader.options.truncate_ids = true;
+    using fields = seqan3::fields<seqan3::field::seq, seqan3::field::id>;
+    using SeqFileInput = seqan3::sequence_file_input<dna4_traits, fields>;
 
-    for (auto & [seq, name] : reader)
+    auto parse = [this, &seqs] (auto && reader)
     {
-        seqs.push_back(std::move(seq));
-        names.push_back(std::move(name));
+        reader.options.truncate_ids = true;
+
+        for (auto & [seq, name] : reader)
+        {
+            seqs.push_back(std::move(seq));
+            names.push_back(std::move(name));
+        }
+    };
+
+    try
+    {
+        SeqFileInput reader{settings.genome_file};
+        parse(reader);
+        return;
     }
+    catch (std::invalid_argument & e)
+    {
+        logger(1, "Could not interpret the file suffix " << settings.genome_file.extension()
+                  << ", trying to parse fasta." << std::endl);
+    }
+    std::ifstream ifs{settings.genome_file};
+    if (ifs)
+    {
+        SeqFileInput reader{ifs, seqan3::format_fasta()};
+        parse(reader);
+    }
+    ifs.close();
 }
 
 void BiDirectionalIndex::write_index(std::filesystem::path & indexpath)
