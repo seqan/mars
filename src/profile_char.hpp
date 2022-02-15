@@ -306,7 +306,8 @@ public:
     {
         std::set<std::pair<float, alph_type>> result{};
         for (auto && [idx, bg] : seqan3::views::zip(std::ranges::views::iota(0), BackgroundDistribution.get<size>()))
-            result.emplace(log2f((tally[idx] + 1.) / one / depth) - bg, alph_type{}.assign_rank(idx));
+            if (tally[idx] > 0)
+                result.emplace(log2f((tally[idx] + 1.) / one / depth) - bg, alph_type{}.assign_rank(idx));
         return result;
     }
 

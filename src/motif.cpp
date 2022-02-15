@@ -93,7 +93,7 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
         {
             if (stemloops[idx].bounds.first > pos + 19u)
                 stemloops.emplace_back(id_cnt++, Coordinate{pos, stemloops[idx].bounds.first - 1u});
-            pos = stemloops[idx].bounds.second;
+            pos = stemloops[idx].bounds.second + 1;
         }
         if (bpseq.size() > pos + 19u || stemloops.empty())
             stemloops.emplace_back(id_cnt, Coordinate{pos, bpseq.size() - 1u});
@@ -106,7 +106,7 @@ std::vector<StemloopMotif> create_motifs()
     if (settings.alignment_file.empty())
         return {};
     else if (settings.alignment_file.extension().string().find("json") != std::string::npos)
-        return std::move(restore_motifs(settings.alignment_file));
+        return restore_motifs(settings.alignment_file);
 
     // Read the alignment
     Msa msa = read_msa(settings.alignment_file);
@@ -231,7 +231,8 @@ void StemloopMotif::analyze(Msa const & msa)
             filter_profile(elem.prio.back());
             bpidx += (elem.is_5prime ? 1 : -1);
         }
-        while (bpseq[bpidx] < bounds.first || bpseq[bpidx] > bounds.second);
+        while ((bpseq[bpidx] < bounds.first || bpseq[bpidx] > bounds.second) &&
+               bpidx >= bounds.first && bpidx <= bounds.second);
 
         for (int current_gap : gap_stat)
             check_gaps(current_gap, elem.gaps, elem.profile.size(), false);
@@ -330,7 +331,7 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
     os << "[" << +motif.uid << "] MOTIF pos = (" << motif.bounds.first << ".."
        << motif.bounds.second << "), len = (" << motif.length.min << ".." << motif.length.max << "), avg= "
        << std::fixed << std::setprecision(1) << motif.length.mean << "\n";
-    for (auto const & el : motif.elements)
+    for (auto elem = motif.elements.crbegin(); elem != motif.elements.crend(); ++elem)
     {
         std::visit([&os] (auto element)
         {
@@ -373,7 +374,7 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
                 os << ") ";
             }
             os << "\n";
-        }, el);
+        }, *elem);
      }
     return os;
 }
