@@ -161,6 +161,8 @@ void filter_gaps(std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, SeqNu
 
 void filter_profile(auto & queue)
 {
+    if (queue.size() < 2)
+        return;
     auto ptr = queue.cbegin();
     while (ptr != queue.cend() && ptr->first < log2f(settings.prune/100.f))
         ++ptr;
