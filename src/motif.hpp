@@ -10,6 +10,7 @@
 #include <seqan3/core/concept/cereal.hpp>
 
 #if SEQAN3_WITH_CEREAL
+#include <cereal/types/set.hpp>
 #include <cereal/types/string.hpp>
 #include <cereal/types/tuple.hpp>
 #include <cereal/types/unordered_map.hpp>
@@ -62,7 +63,6 @@ typedef std::pair<MotifLen, MotifLen> Coordinate;
 struct LoopElement
 {
     LengthStat length;
-    std::vector<profile_char<seqan3::rna4>> profile;
     std::vector<std::set<std::pair<MotifScore, seqan3::rna4>>> prio;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
     bool is_5prime;
@@ -72,7 +72,7 @@ struct LoopElement
     void serialize(Archive & archive)
     {
         archive(length);
-        archive(profile);
+        archive(prio);
         archive(gaps);
         archive(is_5prime);
     }
@@ -83,7 +83,6 @@ struct LoopElement
 struct StemElement
 {
     LengthStat length;
-    std::vector<profile_char<bi_alphabet<seqan3::rna4>>> profile;
     std::vector<std::set<std::pair<MotifScore, bi_alphabet<seqan3::rna4>>>> prio;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
 
@@ -92,7 +91,7 @@ struct StemElement
     void serialize(Archive & archive)
     {
         archive(length);
-        archive(profile);
+        archive(prio);
         archive(gaps);
     }
 #endif

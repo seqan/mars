@@ -76,7 +76,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
 
     auto const & elem = std::get<MotifElement>(*elem_it);
 
-    if (idx == elem.profile.size())
+    if (idx == elem.prio.size())
     {
         auto const next = elem_it + 1;
         if (next == info.motif_end())
@@ -88,7 +88,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
         return;
     }
 
-    auto const & prio = elem.prio[elem.profile.size() - idx - 1];
+    auto const & prio = elem.prio[elem.prio.size() - idx - 1];
 
     // try to extend the pattern
     for (auto opt = prio.crbegin(); opt != prio.crend(); ++opt)

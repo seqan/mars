@@ -82,9 +82,28 @@ TEST(Motif, AnalyzeStemLoop)
     EXPECT_EQ(stem.length.min, 10);
     EXPECT_EQ(stem.length.max, 10);
     EXPECT_FLOAT_EQ(stem.length.mean, 10);
-    EXPECT_EQ(stem.profile.size(), 5);
-    EXPECT_RANGE_EQ(stem.profile[0].quantities(), (std::array<float, 16>{0,0,0,2,0,0,1,1,0,0,0,0,1,0,0,0}));
-    EXPECT_RANGE_EQ(stem.profile[1].quantities(), (std::array<float, 16>{0,0,0,1,0,1,1,0,0,0,0,0,2,0,0,0}));
+    EXPECT_EQ(stem.prio.size(), 5u);
+
+    // check stem.prio[0] values: {0,0,0,2,0,0,1,1,0,0,0,0,1,0,0,0}
+    EXPECT_EQ(stem.prio[0].size(), 4ul);
+    auto stemIt = stem.prio[0].cbegin();
+    EXPECT_EQ(stemIt->second.to_chars(), (std::pair<char, char>{'C', 'G'}));
+    EXPECT_FLOAT_EQ(stemIt->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 9913));
+    ++stemIt;
+    EXPECT_EQ(stemIt->second.to_chars(), (std::pair<char, char>{'U', 'A'}));
+    EXPECT_FLOAT_EQ(stemIt->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 3975));
+    ++stemIt;
+    EXPECT_EQ(stemIt->second.to_chars(), (std::pair<char, char>{'A', 'U'}));
+    EXPECT_FLOAT_EQ(stemIt->first, log2f(17328 * (2*600+1) * 2. / 600 / 5 / 3975));
+    ++stemIt;
+    EXPECT_EQ(stemIt->second.to_chars(), (std::pair<char, char>{'C', 'U'}));
+    EXPECT_FLOAT_EQ(stemIt->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 103));
+    EXPECT_EQ(++stemIt, stem.prio[0].cend());
+
+    // check stem.prio[1] values: {0,0,0,1,0,1,1,0,0,0,0,0,2,0,0,0}
+    EXPECT_EQ(stem.prio[1].size(), 4ul);
+    EXPECT_FLOAT_EQ(stem.prio[1].cbegin()->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 9913));
+
     EXPECT_EQ(stem.gaps.size(), 5u);
     for (auto const & map : stem.gaps)
     {
@@ -98,9 +117,25 @@ TEST(Motif, AnalyzeStemLoop)
     EXPECT_EQ(loop.length.min, 7);
     EXPECT_EQ(loop.length.max, 11);
     EXPECT_FLOAT_EQ(loop.length.mean, 7.8);
-    EXPECT_EQ(loop.profile.size(), 11u);
-    EXPECT_RANGE_EQ(loop.profile[10].quantities(), (std::array<float, 4>{0,2,0,3}));
-    EXPECT_RANGE_EQ(loop.profile[9].quantities(), (std::array<float, 4>{0,0,0,1}));
+    EXPECT_EQ(loop.prio.size(), 11u);
+
+    // check loop.prio[9] values: {0,0,0,1}
+    EXPECT_EQ(loop.prio[9].size(), 1ul);
+    auto loopIt = loop.prio[9].cbegin();
+    EXPECT_EQ(loopIt->second.to_char(), 'U');
+    EXPECT_FLOAT_EQ(loopIt->first, log2f((1*600+1) / 0.3 / 5 / 600));
+    EXPECT_EQ(++loopIt, loop.prio[9].cend());
+
+    // check loop.prio[10] values: {0,2,0,3}
+    EXPECT_EQ(loop.prio[10].size(), 2ul);
+    loopIt = loop.prio[10].cbegin();
+    EXPECT_EQ(loopIt->second.to_char(), 'U');
+    EXPECT_FLOAT_EQ(loopIt->first, log2f((3*600+1) / 0.3 / 5 / 600));
+    ++loopIt;
+    EXPECT_EQ(loopIt->second.to_char(), 'C');
+    EXPECT_FLOAT_EQ(loopIt->first, log2f((2*600+1) / 0.2 / 5 / 600));
+    EXPECT_EQ(++loopIt, loop.prio[10].cend());
+
     EXPECT_EQ(loop.gaps.size(), 11u);
     for (int idx : {0, 1, 2, 3, 4, 5, 6, 7, 8, 10})
     {
@@ -109,5 +144,5 @@ TEST(Motif, AnalyzeStemLoop)
     EXPECT_EQ(loop.gaps[9].size(), 1u);
     auto const & gap_entry = loop.gaps[9].begin();
     EXPECT_EQ(gap_entry->first, 4);
-    EXPECT_EQ(gap_entry->second, 4);
+    EXPECT_EQ(gap_entry->second, 4u);
 }

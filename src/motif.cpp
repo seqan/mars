@@ -194,9 +194,8 @@ void StemloopMotif::analyze(Msa const & msa)
                     ++len;
                 if (seq[right] != seqan3::gap())
                     ++len;
-                check_gaps(current_gap, elem.gaps, elem.profile.size(), is_gap);
+                check_gaps(current_gap, elem.gaps, elem.prio.size(), is_gap);
             }
-            elem.profile.push_back(prof);
             elem.prio.push_back(prof.priority(depth));
             filter_profile(elem.prio.back());
             ++left;
@@ -205,7 +204,7 @@ void StemloopMotif::analyze(Msa const & msa)
         while (bpseq[left] == right);
 
         for (int current_gap : gap_stat)
-            check_gaps(current_gap, elem.gaps, elem.profile.size(), false);
+            check_gaps(current_gap, elem.gaps, elem.prio.size(), false);
 
         filter_gaps(elem.gaps, depth);
         elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
@@ -226,9 +225,8 @@ void StemloopMotif::analyze(Msa const & msa)
                 bool is_gap = prof.increment(seq[bpidx]);
                 if (!is_gap)
                     ++len;
-                check_gaps(current_gap, elem.gaps, elem.profile.size(), is_gap);
+                check_gaps(current_gap, elem.gaps, elem.prio.size(), is_gap);
             }
-            elem.profile.push_back(prof);
             elem.prio.push_back(prof.priority(depth));
             filter_profile(elem.prio.back());
             bpidx += (elem.is_5prime ? 1 : -1);
@@ -237,7 +235,7 @@ void StemloopMotif::analyze(Msa const & msa)
                bpidx >= bounds.first && bpidx <= bounds.second);
 
         for (int current_gap : gap_stat)
-            check_gaps(current_gap, elem.gaps, elem.profile.size(), false);
+            check_gaps(current_gap, elem.gaps, elem.prio.size(), false);
 
         filter_gaps(elem.gaps, depth);
         elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
@@ -288,33 +286,33 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
                         structure.push_back('.');
                     }
                 };
-                for (auto profIt = element.profile.crbegin(); profIt != element.profile.crend(); ++profIt)
+                for (auto profIt = element.prio.crbegin(); profIt != element.prio.crend(); ++profIt)
                 {
-                    unsigned short rank = get_profile_rank(*profIt);
-                    if (rank == 4)
+                    if (profIt->size() > 1)
                         push('N');
-                    else
-                        push(seqan3::rna4{}.assign_rank(rank).to_char());
+                    else if (profIt->size() == 1)
+                        push(profIt->cbegin()->second.to_char());
                 }
             }
             else // stem
             {
-                for (auto profIt = element.profile.crbegin(); profIt != element.profile.crend(); ++profIt)
+                for (auto profIt = element.prio.crbegin(); profIt != element.prio.crend(); ++profIt)
                 {
-                    unsigned short rank = get_profile_rank(*profIt);
-                    if (rank == 16)
+                    if (profIt->size() > 1)
                     {
                         sequence.push_front('N');
                         sequence.push_back('N');
+                        structure.push_front('(');
+                        structure.push_back(')');
                     }
-                    else
+                    else if (profIt->size() == 1)
                     {
-                        std::pair<char, char> chrs = mars::bi_alphabet<seqan3::rna4>{}.assign_rank(rank).to_chars();
+                        std::pair<char, char> chrs = profIt->cbegin()->second.to_chars();
                         sequence.push_front(chrs.first);
                         sequence.push_back(chrs.second);
+                        structure.push_front('(');
+                        structure.push_back(')');
                     }
-                    structure.push_front('(');
-                    structure.push_back(')');
                 }
             }
         }, *elemIt);
