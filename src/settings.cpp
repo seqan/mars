@@ -35,10 +35,10 @@ bool Settings::parse_arguments(int argc, char ** argv)
                       "Alignment file of structurally aligned RNA sequences, "
                       "or a motif file to restore previously calculated motifs.",
                       seqan3::option_spec::standard,
-                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk", "sto", "json"}});
+                      seqan3::input_file_validator{{"msa", "aln", "sth", "stk", "sto", "mmo"}});
 
     parser.add_option(motif_file, 'm', "motif", "File for storing the motifs.", seqan3::option_spec::standard,
-                      seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"json"}});
+                      seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"mmo"}});
 #else
     parser.add_option(alignment_file, 'a', "alignment",
                       "Alignment file of structurally aligned RNA sequences.",

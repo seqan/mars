@@ -18,7 +18,7 @@ int main(int argc, char ** argv)
 
     // Generate motifs from the MSA
     std::vector<mars::StemloopMotif> motifs = mars::create_motifs();
-    auto future_json = mars::pool->submit(mars::store_motifs, motifs);
+    auto future_mmo = mars::pool->submit(mars::store_motifs, motifs);
     auto future_rssp = mars::pool->submit(mars::store_rssp, motifs);
 
     // Wait for index creation process
@@ -37,7 +37,7 @@ int main(int argc, char ** argv)
     {
         logger(1, "No genome sequence provided: skipping search step." << std::endl);
     }
-    future_json.wait();
+    future_mmo.wait();
     future_rssp.wait();
 
     // print run time

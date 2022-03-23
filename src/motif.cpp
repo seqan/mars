@@ -13,7 +13,7 @@
 #include <seqan3/utility/views/zip.hpp>
 
 #if SEQAN3_WITH_CEREAL
-#include <cereal/archives/json.hpp>
+#include <cereal/archives/binary.hpp>
 #endif
 
 #include "motif.hpp"
@@ -105,7 +105,7 @@ std::vector<StemloopMotif> create_motifs()
 {
     if (settings.alignment_file.empty())
         return {};
-    else if (settings.alignment_file.extension().string().find("json") != std::string::npos)
+    else if (settings.alignment_file.extension().string().find("mmo") != std::string::npos)
         return restore_motifs(settings.alignment_file);
 
     // Read the alignment
@@ -401,7 +401,7 @@ std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_fi
     std::ifstream ifs{motif_file, std::ios::binary};
     if (ifs.good())
     {
-        cereal::JSONInputArchive iarchive{ifs};
+        cereal::BinaryInputArchive iarchive{ifs};
         std::string version;
         iarchive(version);
         if (version[0] == '1')
@@ -422,7 +422,7 @@ void store_motifs(std::vector<StemloopMotif> const & motifs)
     if (ofs)
     {
         // Write the index to disk, including a version string.
-        cereal::JSONOutputArchive oarchive{ofs};
+        cereal::BinaryOutputArchive oarchive{ofs};
         std::string const version{"1 mars vector<StemloopMotif>\n"};
         oarchive(version);
         oarchive(motifs);

@@ -49,7 +49,7 @@ if (NOT ViennaRNA_FOUND)
             LOG_CONFIGURE 1
             USES_TERMINAL_CONFIGURE 1
             CONFIGURE_COMMAND <SOURCE_DIR>/configure CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER}
-                --prefix=<INSTALL_DIR> --without-swig --without-kinfold
+                --prefix=<INSTALL_DIR> --without-swig --without-kinfold --disable-simd
                 --without-forester --without-rnalocmin --without-doc --without-tutorial
             LOG_BUILD 1
             USES_TERMINAL_BUILD 1
