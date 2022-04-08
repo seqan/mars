@@ -187,8 +187,13 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
                     }
                 }
 
-                double const evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
-                locations.push({evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx});
+                if (settings.evalue_filter ||
+                    (diversity > motifs.size() / 4 &&
+                    bit_score * 2 > static_cast<float>(motifs.size()) * settings.min_score_per_motif))
+                {
+                    double const evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
+                    locations.push({evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx});
+                }
 
                 left_end = right_end;
             } while (right_end != stop);

@@ -1,6 +1,7 @@
 BSD 3-Clause License
 
-Copyright (c) 2020-2021, Jörg Winkler and Knut Reinert, Freie Universität Berlin.
+Copyright (c) 2020-2022, Jörg Winkler and Knut Reinert,
+Freie Universität Berlin & MPI für molekulare Genetik.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

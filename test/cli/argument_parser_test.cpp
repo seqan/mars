@@ -12,6 +12,7 @@ TEST_F(argument_parser_test, no_options)
     {
         "mars - Motif-based aligned RNA searcher\n"
         "=======================================\n"
+        "    ./mars structuralRNA.aln -g genome.fasta -o out.txt\n"
         "    Try -h or --help for more information.\n"
     };
     EXPECT_EQ(result.exit_code, 0);

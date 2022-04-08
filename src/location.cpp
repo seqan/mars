@@ -7,7 +7,7 @@ namespace mars
 
 bool operator<(MotifLocation const & loc1, MotifLocation const & loc2)
 {
-    if (loc1.evalue != loc2.evalue)
+    if (settings.evalue_filter && loc1.evalue != loc2.evalue)
         return loc1.evalue < loc2.evalue;
     if (loc1.score != loc2.score)
         return loc1.score > loc2.score;
@@ -74,7 +74,7 @@ void SortedLocations::print_results(std::ostream & out)
             << "\t" << iter->evalue
             << std::endl;
     }
-    while (++iter != cend() && iter->evalue < thr);
+    while (++iter != cend() && (!settings.evalue_filter || iter->evalue < thr));
 }
 
 bool operator<(Hit const & hit1, Hit const & hit2)

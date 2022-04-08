@@ -21,16 +21,21 @@ namespace mars
 
 struct Settings
 {
-    std::filesystem::path alignment_file{};
+    // input
     std::filesystem::path genome_file{};
-    std::filesystem::path motif_file{};
+    std::filesystem::path alignment_file{};
+    // output
     std::filesystem::path result_file{};
+    std::filesystem::path motif_file{};
     std::filesystem::path structator_file{};
-    unsigned char xdrop{4};
-    unsigned char prune{10};
-    bool compress_index{false};
-    bool exterior{true};
+    float min_score_per_motif{0.5f};
+    bool evalue_filter{false};
     unsigned short verbose{1};
+    // performance
+    unsigned char prune{10};
+    unsigned char xdrop{4};
+    bool exterior{true};
+    bool compress_index{false};
 
     bool parse_arguments(int argc, char ** argv);
 };

@@ -19,6 +19,7 @@ TEST(Index, Create)
     mars::BiDirectionalIndex bds{};
     mars::settings.genome_file = data("genome.fa");
     mars::settings.compress_index = true;
+    mars::settings.verbose = 0u;
     EXPECT_NO_THROW(bds.create());
 #ifdef SEQAN3_HAS_ZLIB
     std::filesystem::path const indexfile = data("genome.fa.marsindex.gz");
@@ -45,6 +46,7 @@ TEST(Index, BiDirectionalIndex)
 
     mars::BiDirectionalIndex bds{};
     mars::settings.genome_file = data("RF00005.fa");
+    mars::settings.verbose = 0u;
     bds.create();
     mars::bi_alphabet bia{'U'_rna4, 'C'_rna4};
     mars::HitStore hits(10);
