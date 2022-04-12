@@ -6,13 +6,12 @@ namespace mars
 {
 
 std::unique_ptr<thread_pool::ThreadPool> pool;
-std::mutex mutex_cerr;
+std::mutex mutex_console;
 Settings settings{};
 
 bool Settings::parse_arguments(int argc, char ** argv)
 {
-    unsigned int nthreads{std::thread::hardware_concurrency()};
-    nthreads = nthreads != 0u ? nthreads : 1u;
+    nthreads = nthreads == 0u ? 1u : nthreads;
 
     seqan3::argument_parser parser{"mars", argc, argv};
     parser.info.version = "1.0.0";

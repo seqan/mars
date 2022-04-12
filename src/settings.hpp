@@ -7,13 +7,13 @@
 
 #include "ThreadPool.hpp"
 
-#define logger(vlevel, lstr)                                 \
-{                                                            \
-    if (mars::settings.verbose >= (vlevel))                  \
-    {                                                        \
-        std::lock_guard<std::mutex> guard(mars::mutex_cerr); \
-        seqan3::debug_stream << lstr;                        \
-    }                                                        \
+#define logger(vlevel, lstr)                                    \
+{                                                               \
+    if (mars::settings.verbose >= (vlevel))                     \
+    {                                                           \
+        std::lock_guard<std::mutex> guard(mars::mutex_console); \
+        seqan3::debug_stream << lstr;                           \
+    }                                                           \
 }
 
 namespace mars
@@ -36,12 +36,13 @@ struct Settings
     unsigned char xdrop{4};
     bool exterior{true};
     bool compress_index{false};
+    unsigned int nthreads{std::thread::hardware_concurrency()};
 
     bool parse_arguments(int argc, char ** argv);
 };
 
 extern std::unique_ptr<thread_pool::ThreadPool> pool;
-extern std::mutex mutex_cerr;
+extern std::mutex mutex_console;
 extern Settings settings;
 
 } // namespace mars

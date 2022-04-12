@@ -143,67 +143,79 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
     size_t const db_len = index.raw().size() - (index.seq_count() > 1 ? index.seq_count() : 2);
 
     futures.clear();
-    for (size_t sidx = 0u; sidx < index.seq_count(); ++sidx)
+    size_t const delta = (index.seq_count() - 1) / settings.nthreads + 1; // ceil
+    for (size_t sidx = 0u; sidx < index.seq_count(); sidx += delta)
     {
-        if (hits.get(sidx).empty())
-            continue;
-
-        futures.push_back(pool->submit([sidx, &motifs, &locations, &hits, db_len]
-        {
-            std::vector<Hit> & hitvec = hits.get(sidx);
-            std::sort(hitvec.begin(), hitvec.end()); // sort by genome position
-            auto left_end = hitvec.cbegin();
-            auto right_end = left_end;
-            auto const stop = hitvec.cend();
-
-            do
-            {
-                std::vector<std::vector<Hit>::const_iterator> best_hits(motifs.size(), stop);
-                // we allow a position divergence of half alignment length
-                while (right_end != stop && right_end->pos <= left_end->pos + motifs.back().bounds.second / 2)
-                {
-                    auto & iter = best_hits[right_end->midx];
-                    if (iter == stop || iter->score < right_end->score)
-                        iter = right_end;
-                    ++right_end;
-                }
-
-                size_t pos_min{LLONG_MAX};
-                size_t pos_max{0};
-                size_t query_len{0};
-                float bit_score{0};
-                uint8_t diversity{0}; // number of different motifs found
-
-                for (auto & hit : best_hits)
-                {
-                    if (hit != stop)
-                    {
-                        pos_min = std::min(static_cast<size_t>(hit->pos + motifs[hit->midx].bounds.first), pos_min);
-                        pos_max = std::max(static_cast<size_t>(hit->pos + hit->length + motifs[hit->midx].bounds.first),
-                                           pos_max);
-                        bit_score += hit->score;
-                        query_len += hit->length;
-                        ++diversity;
-                    }
-                }
-
-                if (settings.evalue_filter ||
-                    (diversity > motifs.size() / 4 &&
-                    bit_score * 2 > static_cast<float>(motifs.size()) * settings.min_score_per_motif))
-                {
-                    double const evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
-                    locations.push({evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx});
-                }
-
-                left_end = right_end;
-            } while (right_end != stop);
-        })); // end of thread pool execution
+        futures.push_back(pool->submit(merge_hits, std::ref(locations), std::ref(hits), std::ref(motifs),
+                                       db_len, sidx, std::min(sidx + delta, index.seq_count())));
     }
 
     for (auto & future : futures)
         future.wait();
 
     locations.print();
+}
+
+void merge_hits(SortedLocations & locations,
+                HitStore & hits,
+                std::vector<StemloopMotif> const & motifs,
+                size_t db_len,
+                size_t sidx_begin,
+                size_t sidx_end)
+{
+    for (size_t sidx = sidx_begin; sidx < sidx_end; ++sidx)
+    {
+        std::vector<Hit> & hitvec = hits.get(sidx);
+        if (hitvec.empty())
+            continue;
+
+        std::sort(hitvec.begin(), hitvec.end()); // sort by genome position
+        auto left_end = hitvec.cbegin();
+        auto right_end = left_end;
+        auto const stop = hitvec.cend();
+
+        do
+        {
+            std::vector<std::vector<Hit>::const_iterator> best_hits(motifs.size(), stop);
+            // we allow a position divergence of half alignment length
+            while (right_end != stop && right_end->pos <= left_end->pos + motifs.back().bounds.second / 2)
+            {
+                auto & iter = best_hits[right_end->midx];
+                if (iter == stop || iter->score < right_end->score)
+                    iter = right_end;
+                ++right_end;
+            }
+
+            size_t pos_min{LLONG_MAX};
+            size_t pos_max{0};
+            size_t query_len{0};
+            float bit_score{0};
+            uint8_t diversity{0}; // number of different motifs found
+
+            for (auto & hit : best_hits)
+            {
+                if (hit != stop)
+                {
+                    pos_min = std::min(static_cast<size_t>(hit->pos + motifs[hit->midx].bounds.first), pos_min);
+                    pos_max = std::max(static_cast<size_t>(hit->pos + hit->length + motifs[hit->midx].bounds.first),
+                                       pos_max);
+                    bit_score += hit->score;
+                    query_len += hit->length;
+                    ++diversity;
+                }
+            }
+
+            if (settings.evalue_filter ||
+                (diversity > motifs.size() / 4 &&
+                 bit_score * 2 > static_cast<float>(motifs.size()) * settings.min_score_per_motif))
+            {
+                double const evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
+                locations.push({evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx});
+            }
+
+            left_end = right_end;
+        } while (right_end != stop);
+    }
 }
 
 } // namespace mars

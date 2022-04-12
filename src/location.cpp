@@ -40,6 +40,7 @@ void SortedLocations::print()
     else
     {
         logger(1, "Writing " << size() << " results ==> stdout" << std::endl);
+        std::lock_guard<std::mutex> guard(mutex_console);
         print_results(std::cout);
     }
 }

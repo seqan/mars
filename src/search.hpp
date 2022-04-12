@@ -22,6 +22,13 @@ using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>
 
 void find_motifs(BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motifs);
 
+void merge_hits(SortedLocations & locations,
+                HitStore & hits,
+                std::vector<StemloopMotif> const & motifs,
+                size_t db_len,
+                size_t sidx_begin,
+                size_t sidx_end);
+
 //! \brief Provides a bi-directional search step-by-step with backtracking.
 struct SearchInfo
 {

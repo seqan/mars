@@ -328,7 +328,7 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
 
 std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
 {
-    os << "[" << +motif.uid << "] MOTIF pos = (" << motif.bounds.first << ".."
+    os << "[" << (+motif.uid + 1) << "] MOTIF pos = (" << motif.bounds.first << ".."
        << motif.bounds.second << "), len = (" << motif.length.min << ".." << motif.length.max << "), avg= "
        << std::fixed << std::setprecision(1) << motif.length.mean << "\n";
     for (auto elem = motif.elements.crbegin(); elem != motif.elements.crend(); ++elem)
