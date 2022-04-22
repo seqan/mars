@@ -18,11 +18,11 @@
 namespace mars
 {
 
-using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>::const_reverse_iterator;
+using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>::const_iterator;
 
 void find_motifs(BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motifs);
 
-void merge_hits(SortedLocations & locations,
+void merge_hits(LocationCollector & locations,
                 HitStore & hits,
                 std::vector<StemloopMotif> const & motifs,
                 size_t db_len,
@@ -79,7 +79,7 @@ public:
 
     ElementIter motif_end() const
     {
-        return motif.elements.crend();
+        return motif.elements.cend();
     }
 
     /*!

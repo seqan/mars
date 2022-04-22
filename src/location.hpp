@@ -2,7 +2,6 @@
 
 #include <ostream>
 #include <vector>
-#include <set>
 
 #include "index.hpp"
 #include "settings.hpp"
@@ -23,10 +22,10 @@ struct MotifLocation
 
 bool operator<(MotifLocation const & loc1, MotifLocation const & loc2);
 
-class SortedLocations : public std::set<MotifLocation>
+class LocationCollector : public std::vector<MotifLocation>
 {
 public:
-    explicit SortedLocations(BiDirectionalIndex const & index) : index{index} {}
+    explicit LocationCollector(BiDirectionalIndex const & index) : index{index} {}
     void print();
     void push(MotifLocation && loc);
 private:
@@ -49,12 +48,12 @@ struct HitStore
 {
 private:
     std::vector<std::vector<Hit>> hits;
-    std::mutex mutex_hits;
+    std::array<std::mutex, 32> mutexes;
 
 public:
     explicit HitStore(size_t seq_count);
     void push(Hit && hit, size_t seq);
-    std::vector<Hit> & get(size_t idx);
+    std::vector<Hit> & get(size_t seq);
 };
 
 } // namespace mars

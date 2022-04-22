@@ -8,9 +8,9 @@
 
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
 #include <seqan3/core/concept/cereal.hpp>
+#include <seqan3/utility/views/zip.hpp>
 
 #if SEQAN3_WITH_CEREAL
-#include <cereal/types/set.hpp>
 #include <cereal/types/string.hpp>
 #include <cereal/types/tuple.hpp>
 #include <cereal/types/unordered_map.hpp>
@@ -62,8 +62,7 @@ typedef std::pair<MotifLen, MotifLen> Coordinate;
 //! \brief A loop element in a stemloop.
 struct LoopElement
 {
-    LengthStat length;
-    std::vector<std::set<std::pair<MotifScore, seqan3::rna4>>> prio;
+    std::vector<std::vector<std::pair<MotifScore, seqan3::rna4>>> prio;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
     bool is_5prime;
 
@@ -71,7 +70,6 @@ struct LoopElement
     template <seqan3::cereal_archive Archive>
     void serialize(Archive & archive)
     {
-        archive(length);
         archive(prio);
         archive(gaps);
         archive(is_5prime);
@@ -82,15 +80,13 @@ struct LoopElement
 //! \brief A stem element in a stemloop.
 struct StemElement
 {
-    LengthStat length;
-    std::vector<std::set<std::pair<MotifScore, bi_alphabet<seqan3::rna4>>>> prio;
+    std::vector<std::vector<std::pair<MotifScore, bi_alphabet<seqan3::rna4>>>> prio;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
 
 #if SEQAN3_WITH_CEREAL
     template <seqan3::cereal_archive Archive>
     void serialize(Archive & archive)
     {
-        archive(length);
         archive(prio);
         archive(gaps);
     }
@@ -213,6 +209,27 @@ unsigned short get_profile_rank(profile_char<alph_type> const & prof)
         }
     }
     return rank;
+}
+
+/*!
+ * \brief Retrieve the log quantities relative to the background distribution.
+ * \param pch The profile char.
+ * \param depth The number of sequences used to create the profile (for normalization).
+ * \return A priority queue with logarithmic scores and the respective RNA characters.
+ */
+template <seqan3::semialphabet alph_type>
+std::vector<std::pair<MotifScore, alph_type>> priority(profile_char<alph_type> pch, size_t depth)
+{
+    std::vector<std::pair<MotifScore, alph_type>> result{};
+    for (auto && [qnt, chr, bg] : seqan3::views::zip(pch.quantities(), pch.alphabet, pch.background_distribution))
+    {
+        if (qnt > 0)
+        {
+            result.emplace_back(log2f((qnt + 1.) / pch.one / depth) - bg, chr);
+        }
+    }
+    std::sort(result.begin(), result.end());
+    return result;
 }
 
 /*!

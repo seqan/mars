@@ -5,6 +5,23 @@
 namespace mars
 {
 
+/*!\interface BiAlphabetConcept <>
+ * \brief A concept that checks whether t is a Bialphabet.
+ * \tparam t The type to be checked.
+ */
+//!\cond
+template <typename t>
+SEQAN3_CONCEPT BiAlphabetConcept =
+requires (t v)
+{
+    { seqan3::alphabet_size<t> };
+    { v.assign_chars('c', 'c') };
+    { v.to_chars() };
+    { v.first() };
+    { v.second() };
+};
+//!\endcond
+
 //! \brief Only seqan3::get works with bi_alphabet.
 using seqan3::get;
 
@@ -61,6 +78,18 @@ public:
     constexpr std::pair<char, char> to_chars() const noexcept
     {
         return std::make_pair(seqan3::to_char(get<0>(*this)), seqan3::to_char(get<1>(*this)));
+    }
+
+    //! \brief Retrieve the first character of the pair in the underlying alphabet type.
+    constexpr alphabet_type first() const noexcept
+    {
+        return get<0>(*this);
+    }
+
+    //! \brief Retrieve the second character of the pair in the underlying alphabet type.
+    constexpr alphabet_type second() const noexcept
+    {
+        return get<1>(*this);
     }
 };
 

@@ -18,27 +18,18 @@ bool SearchInfo::append_loop(std::pair<float, seqan3::rna4> item, bool left)
         succ = new_cur.extend_right(item.second);
 
     if (succ)
-    {
         history.emplace_back(history.back().first + item.first, new_cur);
-    }
     return succ;
 }
 
 bool SearchInfo::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item)
 {
     seqan3::bi_fm_index_cursor<Index> new_cur(history.back().second);
-    using seqan3::get;
-    seqan3::rna4 chr = get<0>(stem_item.second);
-    bool succ = new_cur.extend_left(chr);
+    bool succ = new_cur.extend_left(stem_item.second.first());
     if (succ)
-    {
-        chr = get<1>(stem_item.second);
-        succ = new_cur.extend_right(chr);
-    }
+        succ = new_cur.extend_right(stem_item.second.second());
     if (succ)
-    {
         history.emplace_back(history.back().first + stem_item.first, new_cur);
-    }
     return succ;
 }
 
@@ -86,7 +77,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
         return;
     }
 
-    auto const & prio = elem.prio[elem.prio.size() - idx - 1];
+    auto const & prio = elem.prio[idx];
 
     // try to extend the pattern
     for (auto opt = prio.crbegin(); opt != prio.crend(); ++opt)
@@ -105,7 +96,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
     }
 
     // try gaps
-    for (auto const & len_num : elem.gaps[elem.gaps.size() - idx - 1])
+    for (auto const & len_num : elem.gaps[idx])
         recurse_search<MotifElement>(info, elem_it, idx + len_num.first);
 }
 
@@ -125,7 +116,7 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
             SearchInfo info(index.raw(), motifs[idx], hits);
 
             // start with the hairpin
-            auto const iter = motifs[idx].elements.crbegin();
+            auto const iter = motifs[idx].elements.cbegin();
             if (std::holds_alternative<LoopElement>(*iter))
                 recurse_search<LoopElement>(info, iter, 0);
             else
@@ -137,7 +128,7 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
         future.wait();
     logger(1, " finished." << std::endl);
 
-    SortedLocations locations(index);
+    LocationCollector locations(index);
     size_t const db_len = index.raw().size() - (index.seq_count() > 1 ? index.seq_count() : 2);
 
     futures.clear();
@@ -154,7 +145,7 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
     locations.print();
 }
 
-void merge_hits(SortedLocations & locations,
+void merge_hits(LocationCollector & locations,
                 HitStore & hits,
                 std::vector<StemloopMotif> const & motifs,
                 size_t db_len,

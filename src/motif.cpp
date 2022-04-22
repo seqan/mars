@@ -196,7 +196,7 @@ void StemloopMotif::analyze(Msa const & msa)
                     ++len;
                 check_gaps(current_gap, elem.gaps, elem.prio.size(), is_gap);
             }
-            elem.prio.push_back(prof.priority(depth));
+            elem.prio.push_back(priority(prof, depth));
             filter_profile(elem.prio.back());
             ++left;
             --right;
@@ -207,8 +207,9 @@ void StemloopMotif::analyze(Msa const & msa)
             check_gaps(current_gap, elem.gaps, elem.prio.size(), false);
 
         filter_gaps(elem.gaps, depth);
-        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
+        std::reverse(elem.gaps.begin(), elem.gaps.end());
+        std::reverse(elem.prio.begin(), elem.prio.end());
     };
 
     auto make_loop = [this, &msa, &bpseq, &motif_len_stat] (int & bpidx, bool is_5prime)
@@ -227,7 +228,7 @@ void StemloopMotif::analyze(Msa const & msa)
                     ++len;
                 check_gaps(current_gap, elem.gaps, elem.prio.size(), is_gap);
             }
-            elem.prio.push_back(prof.priority(depth));
+            elem.prio.push_back(priority(prof, depth));
             filter_profile(elem.prio.back());
             bpidx += (elem.is_5prime ? 1 : -1);
         }
@@ -238,8 +239,9 @@ void StemloopMotif::analyze(Msa const & msa)
             check_gaps(current_gap, elem.gaps, elem.prio.size(), false);
 
         filter_gaps(elem.gaps, depth);
-        elem.length = {len_stat.min(), len_stat.max(), len_stat.sum() / static_cast<float>(depth)};
         motif_len_stat += len_stat;
+        std::reverse(elem.gaps.begin(), elem.gaps.end());
+        std::reverse(elem.prio.begin(), elem.prio.end());
     };
 
     int left = bounds.first;
@@ -259,6 +261,7 @@ void StemloopMotif::analyze(Msa const & msa)
         }
     }
     length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
+    std::reverse(elements.begin(), elements.end());
 }
 
 void StemloopMotif::print_rssp(std::ofstream & os) const
@@ -267,7 +270,7 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
     std::deque<char> sequence{};
     std::deque<char> structure{};
 
-    for (auto elemIt = elements.crbegin(); elemIt != elements.crend(); ++elemIt)
+    for (auto const & elem : elements)
     {
         std::visit([&sequence, &structure] (auto element)
         {
@@ -286,28 +289,28 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
                         structure.push_back('.');
                     }
                 };
-                for (auto profIt = element.prio.crbegin(); profIt != element.prio.crend(); ++profIt)
+                for (auto const & prof : element.prio)
                 {
-                    if (profIt->size() > 1)
+                    if (prof.size() > 1)
                         push('N');
-                    else if (profIt->size() == 1)
-                        push(profIt->cbegin()->second.to_char());
+                    else if (prof.size() == 1)
+                        push(prof.front().second.to_char());
                 }
             }
             else // stem
             {
-                for (auto profIt = element.prio.crbegin(); profIt != element.prio.crend(); ++profIt)
+                for (auto const & prof : element.prio)
                 {
-                    if (profIt->size() > 1)
+                    if (prof.size() > 1)
                     {
                         sequence.push_front('N');
                         sequence.push_back('N');
                         structure.push_front('(');
                         structure.push_back(')');
                     }
-                    else if (profIt->size() == 1)
+                    else if (prof.size() == 1)
                     {
-                        std::pair<char, char> chrs = profIt->cbegin()->second.to_chars();
+                        std::pair<char, char> chrs = prof.front().second.to_chars();
                         sequence.push_front(chrs.first);
                         sequence.push_back(chrs.second);
                         structure.push_front('(');
@@ -315,7 +318,7 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
                     }
                 }
             }
-        }, *elemIt);
+        }, elem);
     }
 
     for (char const c : sequence)
@@ -331,28 +334,25 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
     os << "[" << (+motif.uid + 1) << "] MOTIF pos = (" << motif.bounds.first << ".."
        << motif.bounds.second << "), len = (" << motif.length.min << ".." << motif.length.max << "), avg= "
        << std::fixed << std::setprecision(1) << motif.length.mean << "\n";
-    for (auto elem = motif.elements.crbegin(); elem != motif.elements.crend(); ++elem)
+    for (auto const & elem : motif.elements)
     {
         std::visit([&os] (auto element)
         {
             if constexpr (std::is_same_v<decltype(element), LoopElement>)
                 os << "\tLoop " << (element.is_5prime ? "5' " : "3' ");
             else
-                os << "\tStem ";
+                os << "\tStem    ";
 
-            os << "L=(" << element.length.min << ".." << element.length.max << "), avg= "
-               << std::fixed << std::setprecision(1) << element.length.mean << ":\t";
-
-            for (int idx = element.prio.size() - 1; idx >= 0 ; --idx)
+            for (auto && [prio, gaps] : seqan3::views::zip(element.prio, element.gaps))
             {
-                if (!element.prio[idx].empty())
+                if (!prio.empty())
                 {
-                    auto iter = element.prio[idx].crbegin();
+                    auto iter = prio.crbegin();
                     if constexpr (std::is_same_v<decltype(element), StemElement>)
                     {
                         auto [ch1, ch2] = iter->second.to_chars();
                         os << "(" << ch1 << ch2;
-                        for (++iter; iter != element.prio[idx].crend(); ++iter)
+                        for (++iter; iter != prio.crend(); ++iter)
                         {
                             auto [ch3, ch4] = iter->second.to_chars();
                             os << "," << ch3 << ch4;
@@ -361,20 +361,20 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
                     else
                     {
                         os << "(" << iter->second.to_char();
-                        for (++iter; iter != element.prio[idx].crend(); ++iter)
+                        for (++iter; iter != prio.crend(); ++iter)
                             os << "," << iter->second.to_char();
                     }
-                    if (!element.gaps[idx].empty())
+                    if (!gaps.empty())
                         os << ",";
                 }
                 else
                     os << "(";
-                for (auto const & gap : element.gaps[idx])
+                for (auto const & gap : gaps)
                     os << gap.first << "-";
                 os << ") ";
             }
             os << "\n";
-        }, *elem);
+        }, elem);
      }
     return os;
 }

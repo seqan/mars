@@ -7,78 +7,17 @@
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
+#include <seqan3/alphabet/nucleotide/rna4.hpp>
 #include <seqan3/core/concept/cereal.hpp>
-#include <seqan3/utility/views/zip.hpp>
 
 #if SEQAN3_WITH_CEREAL
 #include <cereal/types/array.hpp>
 #endif
 
+#include "bi_alphabet.hpp"
+
 namespace mars
 {
-
-/*!
- * \brief Stores the expected background distribution for structured RNA sequences.
- */
-struct
-{
-    std::array<float, 16> const r16
-        {
-            // Source:
-            // Olson, W. K., Esguerra, M., Xin, Y., & Lu, X. J. (2009).
-            // New information content in RNA base pairing deduced from quantitative analysis of high-resolution structures.
-            // Methods (San Diego, Calif.), 47(3), 177–186. https://doi.org/10.1016/j.ymeth.2008.12.003
-
-            log2f( 384.f     / 17328), // AA
-            log2f( 313.f / 2 / 17328), // AC
-            log2f( 980.f / 2 / 17328), // AG
-            log2f(3975.f / 2 / 17328), // AU
-            log2f( 313.f / 2 / 17328), // CA
-            log2f(  63.f     / 17328), // CC
-            log2f(9913.f / 2 / 17328), // CG
-            log2f( 103.f / 2 / 17328), // CU
-            log2f( 980.f / 2 / 17328), // GA
-            log2f(9913.f / 2 / 17328), // GC
-            log2f( 128.f     / 17328), // GG
-            log2f(1282.f / 2 / 17328), // GU
-            log2f(3975.f / 2 / 17328), // UA
-            log2f( 103.f / 2 / 17328), // UC
-            log2f(1282.f / 2 / 17328), // UG
-            log2f( 187.f     / 17328)  // UU
-        };
-
-    std::array<float, 4> const r4
-        {
-            log2f(0.3f), // A
-            log2f(0.2f), // C
-            log2f(0.2f), // G
-            log2f(0.3f)  // U
-        };
-
-    template <unsigned short size> requires (size == 4 || size == 16)
-    std::array<float, size> const & get() const
-    {
-        if constexpr (size == 4)
-            return r4;
-        else
-            return r16;
-    }
-} BackgroundDistribution;
-
-/*!\interface BiAlphabetConcept <>
- * \brief A concept that checks whether t is a Bialphabet.
- * \tparam t The type to be checked.
- */
-//!\cond
-template <typename t>
-SEQAN3_CONCEPT BiAlphabetConcept =
-requires (t v)
-{
-    { seqan3::alphabet_size<t> };
-    { v.assign_chars('c', 'c') };
-    { v.to_chars() };
-};
-//!\endcond
 
 /*!
  * \brief Stores the frequency of characters at a specific position.
@@ -90,9 +29,6 @@ class profile_char
 private:
     //! \brief The number of profile entries, i.e. the size of the underlying alphabet.
     static constexpr size_t const size{seqan3::alphabet_size<alph_type>};
-
-    //! \brief The internal representation of a single count.
-    static constexpr uint32_t const one{600};
 
     //! \brief Convert wildcard characters into their components.
     static std::string compose(char chr)
@@ -137,6 +73,9 @@ public:
     constexpr profile_char & operator=(profile_char const &) noexcept = default; //!< Defaulted.
     constexpr profile_char & operator=(profile_char &&)      noexcept = default; //!< Defaulted.
     ~profile_char()                                          noexcept = default; //!< Defaulted.
+
+    //! \brief The internal representation of a single count.
+    static constexpr uint32_t const one{600};
 
     /*!
      * \brief Increase the character count by 1.
@@ -246,11 +185,12 @@ public:
     //!\endcond
     bool increment(seqan3::gapped<inner_alph_type> chr1, seqan3::gapped<inner_alph_type> chr2)
     {
-        if (chr1 == seqan3::gap() || chr2 == seqan3::gap())
-            return true;
-
-        increment(inner_alph_type{}.assign_char(chr1.to_char()), inner_alph_type{}.assign_char(chr2.to_char()));
-        return false;
+        if (chr1 != seqan3::gap() && chr2 != seqan3::gap())
+        {
+            increment(inner_alph_type{}.assign_char(chr1.to_char()), inner_alph_type{}.assign_char(chr2.to_char()));
+            return false;
+        }
+        return true;
     }
 
     /*!
@@ -263,7 +203,7 @@ public:
      */
     float quantity(alph_type chr) const
     {
-        return 1.f * tally[chr.to_rank()] / one;
+        return 1.F * tally[chr.to_rank()] / one;
     }
 
     /*!
@@ -274,7 +214,7 @@ public:
      * \note
      *  The returned number can be non-integral if wildcards were present.
      */
-    [[nodiscard]] float quantity(uint32_t rank) const
+    float quantity(uint32_t rank) const
     {
         assert(rank < size);
         return tally[rank] / static_cast<float>(one);
@@ -285,31 +225,75 @@ public:
      * \return An array that contains the quantities of the profile characters in alphabetical order.
      *
      * \note
-     *  The contained numbers can be non-integral if wildcards were present.
+     * The values are multiplied with 600 in order to avoid float numbers with wildcards.
      */
-    std::array<float, size> quantities() const
+    std::array<uint32_t, size> const & quantities() const
     {
-        std::array<float, size> tmp;
-        std::transform(tally.begin(), tally.end(), tmp.begin(), [] (uint32_t x)
-        {
-            return x / static_cast<float>(one);
-        });
-        return tmp;
+        return tally;
     }
 
-    /*!
-     * \brief Retrieve the log quantities relative to the background distribution.
-     * \param depth The number of sequences used to create the profile (for normalization).
-     * \return A priority queue with logarithmic scores and the respective RNA characters.
-     */
-    std::set<std::pair<float, alph_type>> priority(size_t depth) const
+    //! \brief Provides the the alphabet characters in same order as the quantity array.
+    static constexpr std::array<alph_type, size> alphabet
     {
-        std::set<std::pair<float, alph_type>> result{};
-        for (auto && [idx, bg] : seqan3::views::zip(std::ranges::views::iota(0), BackgroundDistribution.get<size>()))
-            if (tally[idx] > 0)
-                result.emplace(log2f((tally[idx] + 1.) / one / depth) - bg, alph_type{}.assign_rank(idx));
-        return result;
-    }
+        [] () constexpr
+        {
+            std::array<alph_type, size> ret{};
+            for (size_t rnk = 0; rnk < size; ++rnk)
+                ret[rnk] = alph_type{}.assign_rank(rnk);
+            return ret;
+        }()
+    };
+
+    //! \brief Provides the expected background distribution for structured RNA sequences.
+    static constexpr
+    std::array<float, size> background_distribution
+    {
+        [] () constexpr
+        {
+            if constexpr (std::is_same_v<alph_type, seqan3::rna4>)
+            {
+                return std::array<float, 4>
+                {
+                    log2f(0.3F), // A
+                    log2f(0.2F), // C
+                    log2f(0.2F), // G
+                    log2f(0.3F)  // U
+                };
+            }
+            else if constexpr (std::is_same_v<alph_type, bi_alphabet<seqan3::rna4>>)
+            {
+                return std::array<float, 16>
+                {
+                    // Source:
+                    // Olson, W. K., Esguerra, M., Xin, Y., & Lu, X. J. (2009).
+                    // New information content in RNA base pairing deduced from quantitative analysis of
+                    // high-resolution structures.
+                    // Methods (San Diego, Calif.), 47(3), 177–186. https://doi.org/10.1016/j.ymeth.2008.12.003
+
+                    log2f( 384.F     / 17328), // AA
+                    log2f( 313.F / 2 / 17328), // AC
+                    log2f( 980.F / 2 / 17328), // AG
+                    log2f(3975.F / 2 / 17328), // AU
+                    log2f( 313.F / 2 / 17328), // CA
+                    log2f(  63.F     / 17328), // CC
+                    log2f(9913.F / 2 / 17328), // CG
+                    log2f( 103.F / 2 / 17328), // CU
+                    log2f( 980.F / 2 / 17328), // GA
+                    log2f(9913.F / 2 / 17328), // GC
+                    log2f( 128.F     / 17328), // GG
+                    log2f(1282.F / 2 / 17328), // GU
+                    log2f(3975.F / 2 / 17328), // UA
+                    log2f( 103.F / 2 / 17328), // UC
+                    log2f(1282.F / 2 / 17328), // UG
+                    log2f( 187.F     / 17328)  // UU
+                };
+            }
+            else
+            {
+                assert("Background distribution for this alphabet not available. Please implement.");
+            }
+        }()
+    };
 
 #if SEQAN3_WITH_CEREAL
     template <seqan3::cereal_archive Archive>
@@ -324,21 +308,21 @@ public:
  * \brief Stream a representation of a character profile.
  * \tparam alph_type The alphabet type of the profile.
  * \tparam ostream_type The stream type.
- * \param os The stream where the representation is appended.
+ * \param out The stream where the representation is appended.
  * \param chr The character profile that should be printed.
  * \return The output stream.
  * \relates profile_char
  */
 template <seqan3::semialphabet alph_type, typename ostream_type>
-inline ostream_type & operator<<(ostream_type & os, profile_char<alph_type> const & chr)
+inline ostream_type & operator<<(ostream_type & out, profile_char<alph_type> const & chr)
 {
-    os << "(" << chr.quantity(0);
+    out << "(" << chr.quantity(0);
     for (size_t idx = 1; idx < seqan3::alphabet_size<alph_type>; ++idx)
     {
-        os << "," << chr.quantity(idx);
+        out << "," << chr.quantity(idx);
     }
-    os << ")";
-    return os;
+    out << ")";
+    return out;
 }
 
 } // namespace mars

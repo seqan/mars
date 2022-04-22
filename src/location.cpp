@@ -22,14 +22,15 @@ bool operator<(MotifLocation const & loc1, MotifLocation const & loc2)
     return loc1.position_end < loc2.position_end;
 }
 
-void SortedLocations::push(MotifLocation && loc)
+void LocationCollector::push(MotifLocation && loc)
 {
     std::lock_guard<std::mutex> guard(mutex_locations);
-    emplace(loc);
+    emplace_back(loc);
 }
 
-void SortedLocations::print()
+void LocationCollector::print()
 {
+    std::sort(begin(), end());
     if (!settings.result_file.empty())
     {
         logger(1, "Writing " << size() << " results ==> " << settings.result_file << std::endl);
@@ -45,7 +46,7 @@ void SortedLocations::print()
     }
 }
 
-void SortedLocations::print_results(std::ostream & out)
+void LocationCollector::print_results(std::ostream & out)
 {
     out << std::left << std::setw(35) << "sequence name"
         << "\t" << "index"
@@ -90,13 +91,13 @@ HitStore::HitStore(size_t seq_count)
 
 void HitStore::push(Hit && hit, size_t seq)
 {
-    std::lock_guard<std::mutex> guard(mutex_hits);
+    std::lock_guard<std::mutex> guard(mutexes[seq % 32]); // distribute the mutexes
     hits[seq].emplace_back(hit);
 }
 
-std::vector<Hit> & HitStore::get(size_t idx)
+std::vector<Hit> & HitStore::get(size_t seq)
 {
-    return hits[idx];
+    return hits[seq];
 }
 
 } // namespace mars

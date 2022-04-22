@@ -24,7 +24,7 @@ TEST(ProfileChar, SimpleIncrementAndQuantity)
     EXPECT_FLOAT_EQ(prof.quantity(1), 0);
     EXPECT_FLOAT_EQ(prof.quantity(2), 0);
     EXPECT_FLOAT_EQ(prof.quantity(3), 1); //                 A  C  G  U
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{2, 0, 0, 1}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{1200,0,0,600}));
 }
 
 TEST(ProfileChar, ConvertIncrementRna15Rna4)
@@ -37,13 +37,13 @@ TEST(ProfileChar, ConvertIncrementRna15Rna4)
     prof.increment('N'_rna15); // ACGU
     prof.increment('M'_rna15); // AC
     prof.increment('S'_rna15); // CG                         A  C    G  U
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{2, 1.5, 1, 1.5}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{1200,900,600,900}));
 
     prof.increment('V'_rna15); // ACG
     prof.increment('H'_rna15); // ACU
     prof.increment('D'_rna15); // AGU
     prof.increment('B'_rna15); // CGU                        A  C    G  U
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{3, 2.5, 2, 2.5}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{1800,1500,1200,1500}));
 }
 
 TEST(ProfileChar, ConvertIncrementDna15Dna5)
@@ -56,13 +56,13 @@ TEST(ProfileChar, ConvertIncrementDna15Dna5)
     prof.increment('N'_dna15); // N
     prof.increment('M'_dna15); // AC
     prof.increment('S'_dna15); // CG                         A    C  G    N  U
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 5>{1.5, 1, 0.5, 2, 1}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 5>{900,600,300,1200,600}));
 
     prof.increment('R'_dna15); // AG
     prof.increment('W'_dna15); // AU
     prof.increment('Y'_dna15); // CU
     prof.increment('K'_dna15); // GU                         A    C    G    N  U
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 5>{2.5, 1.5, 1.5, 2, 2.5}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 5>{1500,900,900,1200,1500}));
 }
 
 TEST(ProfileChar, ConvertIncrementRna4Rna15)
@@ -75,7 +75,7 @@ TEST(ProfileChar, ConvertIncrementRna4Rna15)
     prof.increment('U'_rna4);
     prof.increment('G'_rna4);
     prof.increment('C'_rna4); //                              A  B  C  D  G  H  K  M  N  R  S  U  V  W  Y
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 15>{1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 15>{600,0,600,0,1200,0,0,0,0,0,0,1200,0,0,0}));
 }
 
 TEST(ProfileChar, GappedAlphabet)
@@ -88,7 +88,7 @@ TEST(ProfileChar, GappedAlphabet)
 
     chr = seqan3::gap();
     EXPECT_TRUE(prof.increment(chr));
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{0.5, 0.5, 0, 0}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 4>{300,300,0,0}));
 }
 
 TEST(ProfileChar, StreamOperator)
@@ -113,26 +113,26 @@ TEST(ProfileChar, BiAlphabet)
     prof.increment(2);
     prof.increment(4);
     prof.increment(6); //                                     AA AC AG AU CA CC CG CU GA GC GG GU UA UC UG UU
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0,0,600,0,600,0,600,0,0,0,0,0,0,0,0,0}));
 
     // Assign with alphabet_type.
     prof.increment({'C'_rna4, 'G'_rna4});
     prof.increment({'U'_rna4, 'A'_rna4});
     prof.increment({'U'_rna4, 'U'_rna4});
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0, 0, 1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 1}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{0,0,600,0,600,0,1200,0,0,0,0,0,600,0,0,600}));
 
     // Assign with two arguments.
     prof.increment('C'_rna4, 'G'_rna4);
     prof.increment('A'_rna4, 'A'_rna4);
     prof.increment('U'_rna4, 'U'_rna4);
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{1, 0, 1, 0, 1, 0, 3, 0, 0, 0, 0, 0, 1, 0, 0, 2}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{600,0,600,0,600,0,1800,0,0,0,0,0,600,0,0,1200}));
 
     // only N
     mars::profile_char<mars::bi_alphabet<seqan3::rna5>> n5{};
     n5.increment('N'_rna15, 'N'_rna15);
-    EXPECT_RANGE_EQ(n5.quantities(), (std::array<float, 25>{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}));
+    EXPECT_RANGE_EQ(n5.quantities(), (std::array<float, 25>{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,600,0,0,0,0,0,0}));
     n5.increment('C'_rna4, 'C'_rna4);
-    EXPECT_RANGE_EQ(n5.quantities(), (std::array<float, 25>{0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}));
+    EXPECT_RANGE_EQ(n5.quantities(), (std::array<float, 25>{0,0,0,0,0,0,600,0,0,0,0,0,0,0,0,0,0,0,600,0,0,0,0,0,0}));
 }
 
 TEST(ProfileChar, BiAlphabetGaps)
@@ -151,10 +151,10 @@ TEST(ProfileChar, BiAlphabetGaps)
     EXPECT_TRUE(prof.increment(g, g));
     EXPECT_FALSE(prof.increment(r, r));
     EXPECT_FALSE(prof.increment(a, a)); //                    AA   AC AG   AU CA CC CG CU GA   GC GG   GU UA UC UG UU
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{1.5, 0, 0.5, 0, 0, 0, 0, 0, 0.5, 0, 0.5, 0, 0, 0, 0, 0}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{900,0,300,0,0,0,0,0,300,0,300,0,0,0,0,0}));
 
     prof.increment('A'_rna15, 'N'_rna15);
     prof.increment('A'_rna15, 'N'_rna15);
     prof.increment('C'_rna15, 'C'_rna15); //                  AA AC   AG AU   CA CC CG CU GA   GC GG   GU UA UC UG UU
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{2, 0.5, 1, 0.5, 0, 1, 0, 0, 0.5, 0, 0.5, 0, 0, 0, 0, 0}));
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{1200,300,600,300,0,600,0,0,300,0,300,0,0,0,0,0}));
 }

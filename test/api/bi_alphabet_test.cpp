@@ -63,7 +63,6 @@ TEST(BiAlphabet, GetValue)
 TEST(BiAlphabet, Rank)
 {
     using seqan3::operator""_rna4;
-    using seqan3::get;
 
     // retrieve rank
     mars::bi_alphabet chr{'G'_rna4, 'C'_rna4};
@@ -73,8 +72,8 @@ TEST(BiAlphabet, Rank)
 
     // assign rank
     chr.assign_rank(7);
-    EXPECT_TRUE(get<0>(chr) == 'C'_rna4);
-    EXPECT_TRUE(get<1>(chr) == 'U'_rna4);
+    EXPECT_TRUE(chr.first() == 'C'_rna4);
+    EXPECT_TRUE(chr.second() == 'U'_rna4);
 }
 
 TEST(BiAlphabet, ToChars)
@@ -91,12 +90,11 @@ TEST(BiAlphabet, ToChars)
 TEST(BiAlphabet, AssignChars)
 {
     using seqan3::operator ""_rna5;
-    using seqan3::get;
 
     mars::bi_alphabet<seqan3::rna5> bi;
     bi.assign_chars('C', 'U');
-    EXPECT_TRUE(get<0>(bi) == 'C'_rna5);
-    EXPECT_TRUE(get<1>(bi) == 'U'_rna5);
+    EXPECT_TRUE(bi.first() == 'C'_rna5);
+    EXPECT_TRUE(bi.second() == 'U'_rna5);
 }
 
 TEST(BiAlphabet, CharIsValid)

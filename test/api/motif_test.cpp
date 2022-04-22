@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <seqan3/std/iterator>
-//#include <seqan3/std/ranges>
-//#include <string_view>
 #include <vector>
 
 #include <seqan3/alphabet/gap/gapped.hpp>
@@ -77,16 +75,13 @@ TEST(Motif, AnalyzeStemLoop)
     EXPECT_EQ(motif.elements.size(), 2u);
 
     // check the stem
-    EXPECT_TRUE(std::holds_alternative<mars::StemElement>(motif.elements[0]));
-    mars::StemElement const & stem = std::get<mars::StemElement>(motif.elements[0]);
-    EXPECT_EQ(stem.length.min, 10);
-    EXPECT_EQ(stem.length.max, 10);
-    EXPECT_FLOAT_EQ(stem.length.mean, 10);
+    EXPECT_TRUE(std::holds_alternative<mars::StemElement>(motif.elements[1]));
+    mars::StemElement const & stem = std::get<mars::StemElement>(motif.elements[1]);
     EXPECT_EQ(stem.prio.size(), 5u);
 
-    // check stem.prio[0] values: {0,0,0,2,0,0,1,1,0,0,0,0,1,0,0,0}
-    EXPECT_EQ(stem.prio[0].size(), 4ul);
-    auto stemIt = stem.prio[0].cbegin();
+    // check stem.prio[4] values: {0,0,0,2,0,0,1,1,0,0,0,0,1,0,0,0}
+    EXPECT_EQ(stem.prio[4].size(), 4ul);
+    auto stemIt = stem.prio[4].cbegin();
     EXPECT_EQ(stemIt->second.to_chars(), (std::pair<char, char>{'C', 'G'}));
     EXPECT_FLOAT_EQ(stemIt->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 9913));
     ++stemIt;
@@ -98,11 +93,11 @@ TEST(Motif, AnalyzeStemLoop)
     ++stemIt;
     EXPECT_EQ(stemIt->second.to_chars(), (std::pair<char, char>{'C', 'U'}));
     EXPECT_FLOAT_EQ(stemIt->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 103));
-    EXPECT_EQ(++stemIt, stem.prio[0].cend());
+    EXPECT_EQ(++stemIt, stem.prio[4].cend());
 
-    // check stem.prio[1] values: {0,0,0,1,0,1,1,0,0,0,0,0,2,0,0,0}
-    EXPECT_EQ(stem.prio[1].size(), 4ul);
-    EXPECT_FLOAT_EQ(stem.prio[1].cbegin()->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 9913));
+    // check stem.prio[3] values: {0,0,0,1,0,1,1,0,0,0,0,0,2,0,0,0}
+    EXPECT_EQ(stem.prio[3].size(), 4ul);
+    EXPECT_FLOAT_EQ(stem.prio[3].cbegin()->first, log2f(17328 * (1*600+1) * 2. / 600 / 5 / 9913));
 
     EXPECT_EQ(stem.gaps.size(), 5u);
     for (auto const & map : stem.gaps)
@@ -111,38 +106,35 @@ TEST(Motif, AnalyzeStemLoop)
     }
 
     // check the loop
-    EXPECT_TRUE(std::holds_alternative<mars::LoopElement>(motif.elements[1]));
-    mars::LoopElement loop = std::get<mars::LoopElement>(motif.elements[1]);
+    EXPECT_TRUE(std::holds_alternative<mars::LoopElement>(motif.elements[0]));
+    mars::LoopElement loop = std::get<mars::LoopElement>(motif.elements[0]);
     EXPECT_FALSE(loop.is_5prime);
-    EXPECT_EQ(loop.length.min, 7);
-    EXPECT_EQ(loop.length.max, 11);
-    EXPECT_FLOAT_EQ(loop.length.mean, 7.8);
     EXPECT_EQ(loop.prio.size(), 11u);
 
-    // check loop.prio[9] values: {0,0,0,1}
-    EXPECT_EQ(loop.prio[9].size(), 1ul);
-    auto loopIt = loop.prio[9].cbegin();
+    // check loop.prio[1] values: {0,0,0,1}
+    EXPECT_EQ(loop.prio[1].size(), 1ul);
+    auto loopIt = loop.prio[1].cbegin();
     EXPECT_EQ(loopIt->second.to_char(), 'U');
     EXPECT_FLOAT_EQ(loopIt->first, log2f((1*600+1) / 0.3 / 5 / 600));
-    EXPECT_EQ(++loopIt, loop.prio[9].cend());
+    EXPECT_EQ(++loopIt, loop.prio[1].cend());
 
-    // check loop.prio[10] values: {0,2,0,3}
-    EXPECT_EQ(loop.prio[10].size(), 2ul);
-    loopIt = loop.prio[10].cbegin();
+    // check loop.prio[0] values: {0,2,0,3}
+    EXPECT_EQ(loop.prio[0].size(), 2ul);
+    loopIt = loop.prio[0].cbegin();
     EXPECT_EQ(loopIt->second.to_char(), 'U');
     EXPECT_FLOAT_EQ(loopIt->first, log2f((3*600+1) / 0.3 / 5 / 600));
     ++loopIt;
     EXPECT_EQ(loopIt->second.to_char(), 'C');
     EXPECT_FLOAT_EQ(loopIt->first, log2f((2*600+1) / 0.2 / 5 / 600));
-    EXPECT_EQ(++loopIt, loop.prio[10].cend());
+    EXPECT_EQ(++loopIt, loop.prio[0].cend());
 
     EXPECT_EQ(loop.gaps.size(), 11u);
-    for (int idx : {0, 1, 2, 3, 4, 5, 6, 7, 8, 10})
+    for (int idx : {0, 2, 3, 4, 5, 6, 7, 8, 9, 10})
     {
         EXPECT_TRUE(loop.gaps[idx].empty());
     }
-    EXPECT_EQ(loop.gaps[9].size(), 1u);
-    auto const & gap_entry = loop.gaps[9].begin();
+    EXPECT_EQ(loop.gaps[1].size(), 1u);
+    auto const & gap_entry = loop.gaps[1].cbegin();
     EXPECT_EQ(gap_entry->first, 4);
     EXPECT_EQ(gap_entry->second, 4u);
 }
