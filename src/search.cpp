@@ -10,7 +10,7 @@ namespace mars
 bool SearchInfo::append_loop(std::pair<float, seqan3::rna4> item, bool left)
 {
     bool succ;
-    seqan3::bi_fm_index_cursor<Index> new_cur(cursors.back());
+    seqan3::bi_fm_index_cursor<Index> new_cur(history.back().second);
 
     if (left)
         succ = new_cur.extend_left(item.second);
@@ -19,15 +19,14 @@ bool SearchInfo::append_loop(std::pair<float, seqan3::rna4> item, bool left)
 
     if (succ)
     {
-        cursors.push_back(new_cur);
-        scores.push_back(scores.back() + item.first);
+        history.emplace_back(history.back().first + item.first, new_cur);
     }
     return succ;
 }
 
 bool SearchInfo::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item)
 {
-    seqan3::bi_fm_index_cursor<Index> new_cur(cursors.back());
+    seqan3::bi_fm_index_cursor<Index> new_cur(history.back().second);
     using seqan3::get;
     seqan3::rna4 chr = get<0>(stem_item.second);
     bool succ = new_cur.extend_left(chr);
@@ -38,34 +37,33 @@ bool SearchInfo::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_it
     }
     if (succ)
     {
-        cursors.push_back(new_cur);
-        scores.push_back(scores.back() + stem_item.first);
+        history.emplace_back(history.back().first + stem_item.first, new_cur);
     }
     return succ;
 }
 
 void SearchInfo::backtrack()
 {
-    scores.pop_back();
-    cursors.pop_back();
+    history.pop_back();
 }
 
 bool SearchInfo::xdrop() const
 {
-    if (cursors.back().query_length() > motif.length.max)
+    if (history.back().second.query_length() > motif.length.max)
         return true;
-    if (scores.size() < settings.xdrop)
+    if (history.size() < settings.xdrop)
         return false;
     else
-        return scores.back() < scores[scores.size() - settings.xdrop];
+        return history.back().first < history[history.size() - settings.xdrop].first;
 }
 
 void SearchInfo::compute_hits() const
 {
-    auto const len = static_cast<long long>(cursors.back().query_length());
-    if (len >= motif.length.min && scores.back() > 0)
-        for (auto && [seq, pos] : cursors.back().locate())
-            hits.push({static_cast<long long>(pos) - motif.bounds.first, len, motif.uid, scores.back()}, seq);
+    auto && [score, cur] = history.back();
+    auto const len = static_cast<long long>(cur.query_length());
+    if (len >= motif.length.min && score > 0)
+        for (auto && [seq, pos] : cur.locate())
+            hits.push({static_cast<long long>(pos) - motif.bounds.first, len, motif.uid, score}, seq);
 }
 
 template <typename MotifElement>

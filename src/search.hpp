@@ -29,6 +29,8 @@ void merge_hits(SortedLocations & locations,
                 size_t sidx_begin,
                 size_t sidx_end);
 
+typedef std::pair<float, seqan3::bi_fm_index_cursor<Index>> ScoredCursor;
+
 //! \brief Provides a bi-directional search step-by-step with backtracking.
 struct SearchInfo
 {
@@ -36,11 +38,8 @@ private:
     StemloopMotif const & motif;
     HitStore & hits;
 
-    //! \brief The history of cursors (needed for backtracking).
-    std::vector<seqan3::bi_fm_index_cursor<Index>> cursors;
-
-    //! \brief The history of scores;
-    std::vector<float> scores;
+    //! \brief The history of scores and cursors (needed for backtracking)
+    std::vector<ScoredCursor> history;
 
 public:
     /*!
@@ -49,11 +48,9 @@ public:
     SearchInfo(Index const & index, StemloopMotif const & stemloop, HitStore & hits):
         motif{stemloop},
         hits{hits},
-        cursors{},
-        scores{}
+        history{}
     {
-        cursors.emplace_back(index);
-        scores.emplace_back(0);
+        history.emplace_back(0, index);
     }
 
     /*!
