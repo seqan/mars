@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 
 #include "search.hpp"
@@ -50,11 +51,17 @@ bool SearchInfo::xdrop() const
 
 void SearchInfo::compute_hits() const
 {
-    auto && [score, cur] = history.back();
+    auto score = history.back().first;
+    auto cur = history.back().second;
     auto const len = static_cast<long long>(cur.query_length());
-    if (len >= motif.length.min && score > 0)
-        for (auto && [seq, pos] : cur.locate())
-            hits.push({static_cast<long long>(pos) - motif.bounds.first, len, motif.uid, score}, seq);
+    if (len >= motif.length.min && len > 5 && score > 0)
+    {
+        futures.push_back(pool->submit([cur, store = &hits, off = motif.bounds.first, len, uid = motif.uid, score]
+        {
+            for (auto && [seq, pos] : cur.locate())
+                store->push({static_cast<long long>(pos) - off, len, uid, score}, seq);
+        }));
+    }
 }
 
 template <typename MotifElement>
@@ -111,26 +118,38 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
     std::vector<std::future<void>> futures;
     for (size_t idx = 0; idx < num_motifs; ++idx)
     {
-        futures.push_back(pool->submit([idx, &index, &motifs, &hits]
+        // keep the number of tasks on a decent level
+        if (futures.size() > (1UL << 23))
         {
-            SearchInfo info(index.raw(), motifs[idx], hits);
+            using namespace std::chrono;
+            logger(1, "\nWaiting for " << futures.size() << " tasks to complete...");
+            steady_clock::time_point tm0 = steady_clock::now();
+            for (auto & future : futures)
+                future.wait();
+            futures.clear();
+            auto const sec = duration_cast<seconds>(steady_clock::now() - tm0).count();
+            logger(1, " finished (" << sec << "s).\nStem loop search...");
+        }
 
-            // start with the hairpin
-            auto const iter = motifs[idx].elements.cbegin();
-            if (std::holds_alternative<LoopElement>(*iter))
-                recurse_search<LoopElement>(info, iter, 0);
-            else
-                recurse_search<StemElement>(info, iter, 0);
-            logger(1, " " << (idx + 1));
-        }));
+        // initiate recursive search
+        SearchInfo info(index.raw(), motifs[idx], hits, futures);
+        auto const iter = motifs[idx].elements.cbegin();
+        if (std::holds_alternative<LoopElement>(*iter))
+            recurse_search<LoopElement>(info, iter, 0);
+        else
+            recurse_search<StemElement>(info, iter, 0);
+        logger(1, " " << (idx + 1));
     }
+    logger(1, "\nWaiting for " << futures.size() << " tasks to complete...");
+    std::chrono::steady_clock::time_point tm0 = std::chrono::steady_clock::now();
     for (auto & future : futures)
         future.wait();
-    logger(1, " finished." << std::endl);
+    auto const sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - tm0).count();
+    logger(1, " finished (" << sec << "s)." << std::endl);
 
+    // collect the hits asynchronously and print
     LocationCollector locations(index);
     size_t const db_len = index.raw().size() - (index.seq_count() > 1 ? index.seq_count() : 2);
-
     futures.clear();
     size_t const delta = (index.seq_count() - 1) / settings.nthreads + 1; // ceil
     for (size_t sidx = 0u; sidx < index.seq_count(); sidx += delta)
@@ -138,7 +157,6 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
         futures.push_back(pool->submit(merge_hits, std::ref(locations), std::ref(hits), std::ref(motifs),
                                        db_len, sidx, std::min(sidx + delta, index.seq_count())));
     }
-
     for (auto & future : futures)
         future.wait();
 

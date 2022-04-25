@@ -48,7 +48,7 @@ struct HitStore
 {
 private:
     std::vector<std::vector<Hit>> hits;
-    std::array<std::mutex, 32> mutexes;
+    std::array<std::mutex, 256> mutexes;
 
 public:
     explicit HitStore(size_t seq_count);

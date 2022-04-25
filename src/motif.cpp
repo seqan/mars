@@ -375,7 +375,7 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
             }
             os << "\n";
         }, elem);
-     }
+    }
     return os;
 }
 

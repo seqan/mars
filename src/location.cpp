@@ -91,7 +91,7 @@ HitStore::HitStore(size_t seq_count)
 
 void HitStore::push(Hit && hit, size_t seq)
 {
-    std::lock_guard<std::mutex> guard(mutexes[seq % 32]); // distribute the mutexes
+    std::lock_guard<std::mutex> guard(mutexes[seq % 256]); // distribute the mutexes
     hits[seq].emplace_back(hit);
 }
 
