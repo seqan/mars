@@ -37,7 +37,8 @@ struct SearchInfo
 private:
     StemloopMotif const & motif;
     HitStore & hits;
-    std::vector<std::future<void>> & futures;
+    std::vector<std::future<void>> & queries;
+    std::mutex & mutex_queries;
 
     //! \brief The history of scores and cursors (needed for backtracking)
     std::vector<ScoredCursor> history;
@@ -47,11 +48,11 @@ public:
      * \brief Constructor for a bi-directional search.
      */
     SearchInfo(Index const & index, StemloopMotif const & stemloop, HitStore & hits,
-               std::vector<std::future<void>> & futures):
+               std::vector<std::future<void>> & queries, std::mutex & mutex_queries):
         motif{stemloop},
         hits{hits},
-        futures{futures},
-        history{}
+        queries{queries},
+        mutex_queries{mutex_queries}
     {
         history.emplace_back(0, index);
     }
