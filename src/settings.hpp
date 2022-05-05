@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <seqan3/std/filesystem>
 #include <memory>
 
@@ -28,8 +29,7 @@ struct Settings
     std::filesystem::path result_file{};
     std::filesystem::path motif_file{};
     std::filesystem::path structator_file{};
-    float min_score_per_motif{0.5f};
-    bool evalue_filter{false};
+    float min_score_per_motif{NAN};
     unsigned short verbose{1};
     // performance
     unsigned char prune{10};

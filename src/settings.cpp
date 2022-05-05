@@ -92,10 +92,8 @@ bool Settings::parse_arguments(int argc, char ** argv)
                       seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"pat"}});
 
     parser.add_option(min_score_per_motif, 's', "scorefilter",
-                      "Minimum score per motif that a hit must achieve. Influences the output of low-scoring hits.");
-
-    parser.add_option(evalue_filter, 'e', "evalue",
-                      "Filter based on e-value instead of score.");
+                      "Minimum score per motif that a hit must achieve. If it is 'nan', we use e-values for filtering "
+                      "hits instead.");
 
     parser.add_option(verbose, 'v', "verbose",
                       "Level of printing status information.");
