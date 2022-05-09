@@ -70,7 +70,7 @@ public:
      * \param stem_item The score and characters to be added.
      * \returns whether the operation was successful.
      */
-    bool append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item);
+    bool append_stem(ScoredRnaPair stem_item);
 
     //! \brief Revert the previous append step, which shrinks the query by one or two characters.
     void backtrack();

@@ -6,6 +6,7 @@
 #include <variant>
 #include <vector>
 
+#include <seqan3/alphabet/gap/gapped.hpp>
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
 #include <seqan3/core/concept/cereal.hpp>
 #include <seqan3/utility/views/zip.hpp>
@@ -59,6 +60,9 @@ struct LengthStat
 //! \brief The boundaries of a stemloop.
 typedef std::pair<MotifLen, MotifLen> Coordinate;
 
+typedef bi_alphabet<seqan3::gapped<seqan3::rna4>> GappedRnaPair;
+typedef std::pair<float, GappedRnaPair> ScoredRnaPair;
+
 //! \brief A loop element in a stemloop.
 struct LoopElement
 {
@@ -80,7 +84,7 @@ struct LoopElement
 //! \brief A stem element in a stemloop.
 struct StemElement
 {
-    std::vector<std::vector<std::pair<MotifScore, bi_alphabet<seqan3::rna4>>>> prio;
+    std::vector<std::vector<ScoredRnaPair>> prio;
     std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
 
 #if SEQAN3_WITH_CEREAL
@@ -187,29 +191,6 @@ std::vector<StemloopMotif> create_motifs();
  * \return a vector of motifs with initialized stemloop positions.
  */
 std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
-
-/*!
- * \brief Analyse whether the profile char is ambiguous.
- * \tparam alph_type The underlying alphabet type of the profile char.
- * \param[in] prof The profile char to check.
- * \return The rank if the profile contains only one entry, the alphabet size otherwise.
- */
-template <seqan3::semialphabet alph_type>
-unsigned short get_profile_rank(profile_char<alph_type> const & prof)
-{
-    unsigned short rank = seqan3::alphabet_size<alph_type>;
-    for (unsigned short idx = 0; idx < seqan3::alphabet_size<alph_type>; ++idx)
-    {
-        if (prof.quantity(idx) > 0)
-        {
-            if (rank == seqan3::alphabet_size<alph_type>)
-                rank = idx;
-            else
-                return seqan3::alphabet_size<alph_type>; // N
-        }
-    }
-    return rank;
-}
 
 /*!
  * \brief Retrieve the log quantities relative to the background distribution.

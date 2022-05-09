@@ -145,16 +145,18 @@ TEST(ProfileChar, BiAlphabetGaps)
     seqan3::gapped<seqan3::rna15> a{'A'_rna15};
     seqan3::gapped<seqan3::rna15> g{seqan3::gap()};
 
-    mars::profile_char<mars::bi_alphabet<seqan3::rna4>> prof{};
-    EXPECT_FALSE(prof.increment(r, r));
-    EXPECT_TRUE(prof.increment(g, n));
-    EXPECT_TRUE(prof.increment(g, g));
-    EXPECT_FALSE(prof.increment(r, r));
-    EXPECT_FALSE(prof.increment(a, a)); //                    AA   AC AG   AU CA CC CG CU GA   GC GG   GU UA UC UG UU
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{900,0,300,0,0,0,0,0,300,0,300,0,0,0,0,0}));
+    mars::profile_char<mars::bi_alphabet<seqan3::gapped<seqan3::rna4>>> prof{};
+    prof.increment(r, r);
+    prof.increment(g, n);
+    prof.increment(g, g);
+    prof.increment(r, r);
+    prof.increment(a, a); // AA AC AG AU A- CA CC CG CU C- GA GC GG GU G- UA UC UG UU U- -A -C -G -U --
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 25>{900,0,300,0,0,0,0,0,0,0,300,0,300,0,0,0,0,0,0,0,
+                                                              150,150,150,150,600}));
 
     prof.increment('A'_rna15, 'N'_rna15);
     prof.increment('A'_rna15, 'N'_rna15);
-    prof.increment('C'_rna15, 'C'_rna15); //                  AA AC   AG AU   CA CC CG CU GA   GC GG   GU UA UC UG UU
-    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 16>{1200,300,600,300,0,600,0,0,300,0,300,0,0,0,0,0}));
+    prof.increment('C'_rna15, 'C'_rna15);
+    EXPECT_RANGE_EQ(prof.quantities(), (std::array<float, 25>{1200,300,600,300,0,0,600,0,0,0,300,0,300,0,0,0,0,0,0,0,
+                                                              150,150,150,150,600}));
 }

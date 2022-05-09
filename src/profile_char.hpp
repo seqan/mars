@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <seqan3/alphabet/concept.hpp>
+#include <seqan3/alphabet/gap/gapped.hpp>
 #include <seqan3/alphabet/nucleotide/rna4.hpp>
 #include <seqan3/core/concept/cereal.hpp>
 
@@ -35,6 +36,7 @@ private:
     {
         switch (chr)
         {
+            case '-': return "-";
             case 'A': return "A";
             case 'C': return "C";
             case 'G': return "G";
@@ -158,7 +160,7 @@ public:
      * If a wildcard is given, the counts of all matching characters are increased by the same fraction
      * (e.g. M = 1/2 A + 1/2 C).
      */
-    template <seqan3::nucleotide_alphabet ext_alph_type>
+    template <seqan3::writable_alphabet ext_alph_type>
     //!\cond
         requires BiAlphabetConcept<alph_type>
     //!\endcond
@@ -170,27 +172,6 @@ public:
         for (char x1 : composition1)
             for (char x2 : composition2)
                 tally[alph_type{}.assign_chars(x1, x2).to_rank()] += one/len;
-    }
-
-    /*!
-     * \brief This is an overload for bi-alphabets with gaps. Increase the character count by 1 unless it has a gap.
-     * \tparam inner_alph_type The underlying alphabet type without the gap; must be a writable alphabet.
-     * \param chr1 The first (gapped) character of the bi-character.
-     * \param chr2 The second (gapped) character of the bi-character.
-     * \returns True, if `chr1` or `chr2` is a gap character, false otherwise.
-     */
-    template <seqan3::writable_alphabet inner_alph_type>
-    //!\cond
-        requires BiAlphabetConcept<alph_type>
-    //!\endcond
-    bool increment(seqan3::gapped<inner_alph_type> chr1, seqan3::gapped<inner_alph_type> chr2)
-    {
-        if (chr1 != seqan3::gap() && chr2 != seqan3::gap())
-        {
-            increment(inner_alph_type{}.assign_char(chr1.to_char()), inner_alph_type{}.assign_char(chr2.to_char()));
-            return false;
-        }
-        return true;
     }
 
     /*!
@@ -286,6 +267,39 @@ public:
                     log2f( 103.F / 2 / 17328), // UC
                     log2f(1282.F / 2 / 17328), // UG
                     log2f( 187.F     / 17328)  // UU
+                };
+            }
+            else if constexpr (std::is_same_v<alph_type, bi_alphabet<seqan3::gapped<seqan3::rna4>>>)
+            {
+                return std::array<float, 25>
+                {
+                    // Source as above with 0 for gaps
+
+                    log2f( 384.F     / 17328), // AA
+                    log2f( 313.F / 2 / 17328), // AC
+                    log2f( 980.F / 2 / 17328), // AG
+                    log2f(3975.F / 2 / 17328), // AU
+                    0,                         // A-
+                    log2f( 313.F / 2 / 17328), // CA
+                    log2f(  63.F     / 17328), // CC
+                    log2f(9913.F / 2 / 17328), // CG
+                    log2f( 103.F / 2 / 17328), // CU
+                    0,                         // C-
+                    log2f( 980.F / 2 / 17328), // GA
+                    log2f(9913.F / 2 / 17328), // GC
+                    log2f( 128.F     / 17328), // GG
+                    log2f(1282.F / 2 / 17328), // GU
+                    0,                         // G-
+                    log2f(3975.F / 2 / 17328), // UA
+                    log2f( 103.F / 2 / 17328), // UC
+                    log2f(1282.F / 2 / 17328), // UG
+                    log2f( 187.F     / 17328), // UU
+                    0,                         // U-
+                    0,                         // -A
+                    0,                         // -C
+                    0,                         // -G
+                    0,                         // -U
+                    0                          // --
                 };
             }
             else

@@ -161,7 +161,7 @@ void filter_gaps(std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, SeqNu
 
 void filter_profile(auto & queue)
 {
-    if (queue.size() < 2)
+    if (queue.size() < 2 || settings.prune == 0)
         return;
     auto ptr = queue.cbegin();
     while (ptr != queue.cend() && ptr->first < log2f(settings.prune/100.f))
@@ -186,14 +186,15 @@ void StemloopMotif::analyze(Msa const & msa)
         {
             assert(bpseq[right] == left);
             elem.gaps.emplace_back();
-            profile_char<bi_alphabet<seqan3::rna4>> prof{};
+            profile_char<GappedRnaPair> prof{};
             for (auto &&[current_gap, len, seq] : seqan3::views::zip(gap_stat, len_stat, msa.sequences))
             {
-                bool is_gap = prof.increment(seq[left], seq[right]);
-                if (seq[left] != seqan3::gap())
-                    ++len;
-                if (seq[right] != seqan3::gap())
-                    ++len;
+                bool is_gap = seq[left] == seqan3::gap() && seq[right] == seqan3::gap();
+                if (!is_gap)
+                {
+                    prof.increment(seq[left], seq[right]);
+                    len += (seq[left] != seqan3::gap() && seq[right] != seqan3::gap()) ? 2 : 1;
+                }
                 check_gaps(current_gap, elem.gaps, elem.prio.size(), is_gap);
             }
             elem.prio.push_back(priority(prof, depth));

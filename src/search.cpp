@@ -25,12 +25,14 @@ bool SearchInfo::append_loop(std::pair<float, seqan3::rna4> item, bool left)
     return succ;
 }
 
-bool SearchInfo::append_stem(std::pair<float, bi_alphabet<seqan3::rna4>> stem_item)
+bool SearchInfo::append_stem(ScoredRnaPair stem_item)
 {
     seqan3::bi_fm_index_cursor<Index> new_cur(history.back().second);
-    bool succ = new_cur.extend_left(stem_item.second.first());
-    if (succ)
-        succ = new_cur.extend_right(stem_item.second.second());
+    bool succ = true;
+    if (stem_item.second.first() != seqan3::gap())
+        succ = new_cur.extend_left(stem_item.second.first().convert_unsafely_to<seqan3::rna4>());
+    if (succ && stem_item.second.second() != seqan3::gap())
+        succ = new_cur.extend_right(stem_item.second.second().convert_unsafely_to<seqan3::rna4>());
     if (succ)
         history.emplace_back(history.back().first + stem_item.first, new_cur);
     return succ;
