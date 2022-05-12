@@ -52,7 +52,7 @@ void SearchInfo::backtrack()
 
 bool SearchInfo::xdrop() const
 {
-    if (history.back().second.query_length() > stemloop.length.max)
+    if (history.back().second.query_length() > stemloop.length.second)
         return true;
     if (history.size() < settings.xdrop)
         return false;
@@ -65,7 +65,7 @@ void SearchInfo::compute_hits() const
     auto score = history.back().first;
     auto cur = history.back().second;
     auto const len = static_cast<long long>(cur.query_length());
-    if (len >= stemloop.length.min && len > 5 && score > 0)
+    if (len >= stemloop.length.first && len > 5 && score > 0)
     {
         std::lock_guard<std::mutex> guard(queries.mutex);
         queries.futures.push_back(pool->submit([cur, store = &hits, off = stemloop.bounds.first, len,
@@ -78,7 +78,7 @@ void SearchInfo::compute_hits() const
 }
 
 template <typename MotifElement>
-void recurse_search(SearchInfo & info, ElementIter elem_it, MotifLen idx)
+void recurse_search(SearchInfo & info, ElementIter elem_it, Position idx)
 {
     if (info.xdrop())
         return;
@@ -104,7 +104,7 @@ void recurse_search(SearchInfo & info, ElementIter elem_it, MotifLen idx)
     {
         bool succ;
         if constexpr (std::is_same_v<MotifElement, LoopElement>)
-            succ = info.append_loop(*opt, elem.is_5prime);
+            succ = info.append_loop(*opt, elem.leftsided);
         else
             succ = info.append_stem(*opt);
 
@@ -120,7 +120,7 @@ void recurse_search(SearchInfo & info, ElementIter elem_it, MotifLen idx)
         recurse_search<MotifElement>(info, elem_it, idx + len_num.first);
 }
 
-void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motif)
+void find_motif(mars::BiDirectionalIndex const & index, Motif const & motif)
 {
     StemloopHitStore hits(index.get_names().size());
 
@@ -176,7 +176,7 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
 
 void merge_hits(MotifLocationStore & locations,
                 StemloopHitStore & hits,
-                std::vector<StemloopMotif> const & motif,
+                Motif const & motif,
                 size_t db_len,
                 size_t sidx_begin,
                 size_t sidx_end)
@@ -223,9 +223,9 @@ void merge_hits(MotifLocationStore & locations,
                 }
             }
 
-            if (std::isnan(settings.min_score_per_motif) || // evalue filter
+            if (std::isnan(settings.score_filter) || // evalue filter
                 (diversity > motif.size() / 4 &&
-                 bit_score > static_cast<float>(motif.size()) * settings.min_score_per_motif))
+                 bit_score > static_cast<float>(motif.size()) * settings.score_filter))
             {
                 double const evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
                 locations.push({evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx});

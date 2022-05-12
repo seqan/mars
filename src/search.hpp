@@ -44,7 +44,7 @@ private:
     std::vector<std::pair<float, seqan3::bi_fm_index_cursor<Index>>> history;
 
     //! \brief The stemloop to be searched.
-    StemloopMotif const & stemloop;
+    Stemloop const & stemloop;
 
     //! \brief The resulting stemloop hits are stored here concurrently.
     StemloopHitStore & hits;
@@ -61,7 +61,7 @@ public:
      * \param queries Storage for the task futures of locating the hits.
      */
     SearchInfo(Index const & index,
-               StemloopMotif const & stemloop,
+               Stemloop const & stemloop,
                StemloopHitStore & hits,
                ConcurrentFutureVector & queries):
         stemloop{stemloop},
@@ -116,7 +116,7 @@ public:
  * \param idx The position in the stemloop element where to start the search.
  */
 template <typename MotifElement>
-void recurse_search(SearchInfo & info, ElementIter elem_it, MotifLen idx);
+void recurse_search(SearchInfo & info, ElementIter elem_it, Position idx);
 
 /*!
  * \brief Combine hits into motif locations separately for each sequence in range.
@@ -129,7 +129,7 @@ void recurse_search(SearchInfo & info, ElementIter elem_it, MotifLen idx);
  */
 void merge_hits(MotifLocationStore & locations,
                 StemloopHitStore & hits,
-                std::vector<StemloopMotif> const & motif,
+                Motif const & motif,
                 size_t db_len,
                 size_t sidx_begin,
                 size_t sidx_end);
@@ -139,6 +139,6 @@ void merge_hits(MotifLocationStore & locations,
  * \param index The index to be searched in.
  * \param motif The motif to be searched.
  */
-void find_motifs(BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motif);
+void find_motif(BiDirectionalIndex const & index, Motif const & motif);
 
 } // namespace mars

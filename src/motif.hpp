@@ -34,56 +34,42 @@
 namespace mars
 {
 
-//! \brief Type for motif id. We expect to find less than 256 motifs.
-using MotifNum = uint8_t;
-
-//! \brief Type for positions within a motif. We expect that motifs are shorter than 65k.
-using MotifLen = uint16_t;
-
-//! \brief Type for the score of a motif.
-using MotifScore = float;
-
-//! \brief Type for sequence id. We expect to have less than 4G sequences.
-using SeqNum = size_t;
-
-//! \brief Store {min, mean, max} of a distribution.
-struct LengthStat
-{
-    MotifLen min;
-    MotifLen max;
-    float mean;
-
-#if SEQAN3_WITH_CEREAL
-    template <seqan3::cereal_archive Archive>
-    void serialize(Archive & archive)
-    {
-        archive(min);
-        archive(max);
-        archive(mean);
-    }
-#endif
-};
+//! \brief Type for positions within a stemloop. We expect that stemloops are shorter than 65k.
+using Position = uint16_t;
 
 //! \brief The boundaries of a stemloop.
-typedef std::pair<MotifLen, MotifLen> Coordinate;
+typedef std::pair<Position, Position> Bounds;
 
-typedef bi_alphabet<seqan3::gapped<seqan3::rna4>> GappedRnaPair;
-typedef std::pair<float, GappedRnaPair> ScoredRnaPair;
+//! \brief A pair of score and gapped RNA bi-character (to represent stems).
+typedef std::pair<float, bi_alphabet<seqan3::gapped<seqan3::rna4>>> ScoredRnaPair;
+
+//! \brief A pair of score and RNA character (to represent loops).
+typedef std::pair<float, seqan3::rna4> ScoredRna;
 
 //! \brief A loop element in a stemloop.
 struct LoopElement
 {
-    std::vector<std::vector<std::pair<MotifScore, seqan3::rna4>>> prio;
-    std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
-    bool is_5prime;
+    //! \brief Prioritized list of loop characters.
+    std::vector<std::vector<ScoredRna>> prio;
+
+    //! \brief For each position we store the length and number of gaps in a hash map.
+    std::vector<std::unordered_map<Position, size_t>> gaps;
+
+    //! \brief Flag whether the loop is on the left side (towards 5').
+    bool leftsided;
 
 #if SEQAN3_WITH_CEREAL
+    /*!
+     * \brief Function that guides Cereal serialization.
+     * \tparam Archive Type of the Cereal archive.
+     * \param archive The archive.
+     */
     template <seqan3::cereal_archive Archive>
     void serialize(Archive & archive)
     {
         archive(prio);
         archive(gaps);
-        archive(is_5prime);
+        archive(leftsided);
     }
 #endif
 };
@@ -91,10 +77,18 @@ struct LoopElement
 //! \brief A stem element in a stemloop.
 struct StemElement
 {
+    //! \brief Prioritized list of stem characters.
     std::vector<std::vector<ScoredRnaPair>> prio;
-    std::vector<std::unordered_map<MotifLen, SeqNum>> gaps;
+
+    //! \brief For each position we store the length and number of gaps in a hash map.
+    std::vector<std::unordered_map<Position, size_t>> gaps;
 
 #if SEQAN3_WITH_CEREAL
+    /*!
+     * \brief Function that guides Cereal serialization.
+     * \tparam Archive Type of the Cereal archive.
+     * \param archive The archive.
+     */
     template <seqan3::cereal_archive Archive>
     void serialize(Archive & archive)
     {
@@ -104,55 +98,30 @@ struct StemElement
 #endif
 };
 
-//! \brief A stemloop motif consists of a series of loop and stem elements.
-struct StemloopMotif
+//! \brief A stemloop consists of a series of loop and stem elements.
+struct Stemloop
 {
-    //! \brief A unique identifier for the motif.
-    MotifNum uid;
+    //! \brief A unique identifier for the stemloop.
+    uint8_t uid;
 
     //! \brief The position interval, where the stemloop is located in the alignment.
-    Coordinate bounds;
+    Bounds bounds;
 
-    //! \brief The length statistics of the stemloop.
-    LengthStat length;
+    //! \brief The minimum and maximum length of the stemloop.
+    Bounds length;
 
-    //! \brief The number of underlying sequences of which the motif was created.
-    SeqNum depth;
+    //! \brief The number of underlying sequences of which the stemloop was created.
+    size_t depth;
 
     //! \brief A vector of loop and stem elements that the stemloop consists of.
     std::vector<std::variant<LoopElement, StemElement>> elements;
 
     /*!
-     * \brief Add a new stem to this motif.
-     * \return a reference to the new stem element.
+     * \brief Constructor for a stemloop.
+     * \param id A unique ID for the stemloop.
+     * \param pos The location of the stemloop.
      */
-    StemElement & new_stem();
-
-    /*!
-     * \brief Add a new loop to this motif.
-     * \param is_5prime True for 5' loops, false for 3' loops.
-     * \return a reference to the new loop element.
-     */
-    LoopElement & new_loop(bool is_5prime);
-
-    /*!
-     * \brief Analyze the motif's properties based on the MSA and interactions.
-     * \param msa The multiple structural alignment.
-     */
-    void analyze(Msa const & msa);
-
-    /*!
-     * \brief Print the motif as RSSP for the Structator program.
-     * \param[in,out] os The output stream.
-     */
-    void print_rssp(std::ofstream & os) const;
-
-    /*!
-     * \brief Constructor for a stemloop motif.
-     * \param id A unique ID for the motif.
-     * \param pos The location of the motif.
-     */
-    StemloopMotif(MotifNum id, Coordinate pos) :
+    Stemloop(uint8_t id, Bounds pos) :
         uid{id},
         bounds{std::move(pos)},
         length{},
@@ -161,9 +130,15 @@ struct StemloopMotif
     {}
 
 #if SEQAN3_WITH_CEREAL
-    StemloopMotif() : uid{}, bounds{}, length{}, depth{}, elements{}
+    //! \brief Default constructor for serialization.
+    Stemloop() : uid{}, bounds{}, length{}, depth{}, elements{}
     {}
 
+    /*!
+     * \brief Function that guides Cereal serialization.
+     * \tparam Archive Type of the Cereal archive.
+     * \param archive The archive.
+     */
     template <seqan3::cereal_archive Archive>
     void serialize(Archive & archive)
     {
@@ -174,30 +149,51 @@ struct StemloopMotif
         archive(elements);
     }
 #endif
+
+    /*!
+     * \brief Analyze the stemloop's properties based on the MSA and interactions.
+     * \param msa The multiple structural alignment.
+     */
+    void analyze(Msa const & msa);
+
+    /*!
+     * \brief Print the stemloop as RSSP for the Structator program.
+     * \param[in,out] os The output stream.
+     */
+    void print_rssp(std::ofstream & os) const;
 };
 
+//! \brief A motif is a collection of stemloops.
+typedef std::vector<Stemloop> Motif;
+
 /*!
- * \brief Stream a representation of a stem loop motif.
+ * \brief Stream a representation of a stem loop.
  * \param os The output stream.
- * \param motif The motif to be printed.
- * \return the stream with the motif representation appended.
+ * \param stemloop The stemloop to be printed.
+ * \return the stream with the stemloop representation appended.
  */
-std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif);
+std::ostream & operator<<(std::ostream & os, Stemloop const & stemloop);
+
+/*!
+ * \brief Write the motif in rssp format for Structator.
+ * \param motif The motif.
+ */
+void store_rssp(Motif const & motif);
 
 /*!
  * \brief Create the motif descriptors by analysing a multiple sequence-structure alignment.
  * \param threads The maximum number of threads allowed for execution.
- * \return A vector of motifs.
+ * \return A motif (vector of stemloops).
  */
-std::vector<StemloopMotif> create_motifs();
+Motif create_motif();
 
 /*!
  * \brief Extract the positions of the stem loops.
  * \param bpseq The base pairing at each position.
  * \param plevel The pseudoknot level at each position.
- * \return a vector of motifs with initialized stemloop positions.
+ * \return a motif with initialized stemloop positions.
  */
-std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
+Motif detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel);
 
 /*!
  * \brief Retrieve the log quantities relative to the background distribution.
@@ -206,9 +202,9 @@ std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std:
  * \return A priority queue with logarithmic scores and the respective RNA characters.
  */
 template <seqan3::semialphabet alph_type>
-std::vector<std::pair<MotifScore, alph_type>> priority(profile_char<alph_type> pch, size_t depth)
+std::vector<std::pair<float, alph_type>> priority(profile_char<alph_type> pch, size_t depth)
 {
-    std::vector<std::pair<MotifScore, alph_type>> result{};
+    std::vector<std::pair<float, alph_type>> result{};
     for (auto && [qnt, chr, bg] : seqan3::views::zip(pch.quantities(), pch.alphabet, pch.background_distribution))
     {
         if (qnt > 0)
@@ -220,25 +216,19 @@ std::vector<std::pair<MotifScore, alph_type>> priority(profile_char<alph_type> p
     return result;
 }
 
-/*!
- * \brief Write the motifs in rssp format for Structator.
- * \param motifs the motif vector.
- */
-void store_rssp(std::vector<StemloopMotif> const & motifs);
-
 #if SEQAN3_WITH_CEREAL
 /*!
- * \brief Read motifs from a file.
- * \param motif_file The filename from which where the motifs can be restored.
- * \return the motif vector.
+ * \brief Read motif from a file.
+ * \param motif_file The filename from which where the motif can be restored.
+ * \return the motif.
  */
-std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_file);
+Motif restore_motif(std::filesystem::path const & motif_file);
 
 /*!
- * \brief Write the motifs to a file.
- * \param motifs The motifs.
+ * \brief Write the motif to a file.
+ * \param motifs The motif.
  */
-void store_motifs(std::vector<StemloopMotif> const & motifs);
+void store_motif(Motif const & motif);
 #endif
 
 } // namespace mars

@@ -98,7 +98,7 @@ bool Settings::parse_arguments(int argc, char ** argv)
                       seqan3::option_spec::standard,
                       seqan3::output_file_validator{seqan3::output_file_open_options::open_or_create, {"pat"}});
 
-    parser.add_option(min_score_per_motif, 's', "scorefilter",
+    parser.add_option(score_filter, 's', "scorefilter",
                       "Minimum score per motif that a hit must achieve. If it is 'nan', we use e-values for filtering "
                       "hits instead.");
 
@@ -107,19 +107,19 @@ bool Settings::parse_arguments(int argc, char ** argv)
 
     parser.add_subsection("Performance options:");
     parser.add_option(prune, 'p', "prune",
-                      "Prune the search if occurence is lower than p% of expected.",
+                      "Prune the motif if alignment column occurence is lower than p% of expected.",
                       seqan3::option_spec::standard,
                       seqan3::arithmetic_range_validator{0,100});
 
     parser.add_option(xdrop, 'x', "xdrop",
                       "The xdrop parameter. Smaller values increase speed but we will find less matches.");
 
-    parser.add_option(exterior, 'l', "exterior",
-                      "Consider long exterior and multibranch loops as well.");
+    parser.add_flag(limit, 'l', "limit",
+                    "Limit motif to stemloops, do not consider long exterior and multibranch loops.");
 
 #ifdef SEQAN3_HAS_ZLIB
-    parser.add_option(compress_index, 'z', "gzip",
-                      "Use gzip compression for the index file.");
+    parser.add_flag(compress_index, 'z', "gzip",
+                    "Use gzip compression for the index file.");
 #endif
 
     parser.add_option(nthreads, 'j', "threads",

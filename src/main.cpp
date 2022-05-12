@@ -24,19 +24,19 @@ int main(int argc, char ** argv)
     auto future_index = mars::pool->submit(&mars::BiDirectionalIndex::create, &index);
 
     // Generate motifs from the MSA
-    std::vector<mars::StemloopMotif> motifs = mars::create_motifs();
-    auto future_mmo = mars::pool->submit(mars::store_motifs, motifs);
-    auto future_rssp = mars::pool->submit(mars::store_rssp, motifs);
+    mars::Motif motif = mars::create_motif();
+    auto future_mmo = mars::pool->submit(mars::store_motif, motif);
+    auto future_rssp = mars::pool->submit(mars::store_rssp, motif);
 
     // Wait for index creation process
     future_index.wait();
 
-    if (!motifs.empty() && !index.raw().empty())
+    if (!motif.empty() && !index.raw().empty())
     {
-        // Search the genome for motifs
-        mars::find_motifs(index, motifs);
+        // Search the genome for motif
+        mars::find_motif(index, motif);
     }
-    else if (motifs.empty())
+    else if (motif.empty())
     {
         logger(1, "There are no motifs: skipping search step." << std::endl);
     }

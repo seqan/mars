@@ -16,7 +16,7 @@ namespace mars
 
 bool operator<(MotifLocation const & lhs, MotifLocation const & rhs)
 {
-    if (std::isnan(settings.min_score_per_motif) && lhs.evalue != rhs.evalue)
+    if (std::isnan(settings.score_filter) && lhs.evalue != rhs.evalue)
         return lhs.evalue < rhs.evalue;
     if (lhs.score != rhs.score)
         return lhs.score > rhs.score;
@@ -67,7 +67,7 @@ void MotifLocationStore::print(std::ostream & out)
             << "\t" << iter->evalue
             << std::endl;
     }
-    while (++iter != cend() && (!std::isnan(settings.min_score_per_motif) || iter->evalue < thr));
+    while (++iter != cend() && (!std::isnan(settings.score_filter) || iter->evalue < thr));
 }
 
 void MotifLocationStore::print()

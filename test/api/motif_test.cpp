@@ -37,14 +37,14 @@ TEST(Motif, Detection)
                             -1,-1,-1,-1,-1, 0, 0, 0, 0,-1,
                              0, 0, 0, 0, 0, 0, 0,-1};
 
-    std::vector<mars::StemloopMotif> motifs = mars::detect_stemloops(bpseq, plevel);
-    EXPECT_EQ(motifs.size(), 3u);
-    EXPECT_EQ(motifs[0].bounds, (mars::Coordinate{27, 47}));
-    EXPECT_EQ(motifs[1].bounds, (mars::Coordinate{54, 68}));
-    EXPECT_EQ(motifs[2].bounds, (mars::Coordinate{0, 26}));
-    EXPECT_EQ(motifs[0].uid, 0);
-    EXPECT_EQ(motifs[1].uid, 1);
-    EXPECT_EQ(motifs[2].uid, 2);
+    mars::Motif motif = mars::detect_stemloops(bpseq, plevel);
+    EXPECT_EQ(motif.size(), 3u);
+    EXPECT_EQ(motif[0].bounds, (mars::Bounds{27, 47}));
+    EXPECT_EQ(motif[1].bounds, (mars::Bounds{54, 68}));
+    EXPECT_EQ(motif[2].bounds, (mars::Bounds{0, 26}));
+    EXPECT_EQ(motif[0].uid, 0);
+    EXPECT_EQ(motif[1].uid, 1);
+    EXPECT_EQ(motif[2].uid, 2);
 }
 
 TEST(Motif, AnalyzeStemLoop)
@@ -73,12 +73,11 @@ TEST(Motif, AnalyzeStemLoop)
     copy(std::string_view{"guuucuguagu-ugaau---uacaacgaugauu----uuucaugucauuggu-cgcaguugaaugcuguguagaaaua"}
          | seqan3::views::char_to<seqan3::gapped<seqan3::rna15>>, std::cpp20::back_inserter(msa.sequences[4]));
 
-    mars::StemloopMotif motif{0, {27, 47}};
+    mars::Stemloop motif{0, {27, 47}};
     motif.analyze(msa);
-    EXPECT_EQ(motif.bounds, (mars::Coordinate{27ul, 47ul}));
-    EXPECT_EQ(motif.length.min, 17);
-    EXPECT_EQ(motif.length.max, 21);
-    EXPECT_FLOAT_EQ(motif.length.mean, 17.8);
+    EXPECT_EQ(motif.bounds, (mars::Bounds{27ul, 47ul}));
+    EXPECT_EQ(motif.length.first, 17);
+    EXPECT_EQ(motif.length.second, 21);
     EXPECT_EQ(motif.elements.size(), 2u);
 
     // check the stem
@@ -115,7 +114,7 @@ TEST(Motif, AnalyzeStemLoop)
     // check the loop
     EXPECT_TRUE(std::holds_alternative<mars::LoopElement>(motif.elements[0]));
     mars::LoopElement loop = std::get<mars::LoopElement>(motif.elements[0]);
-    EXPECT_FALSE(loop.is_5prime);
+    EXPECT_FALSE(loop.leftsided);
     EXPECT_EQ(loop.prio.size(), 11u);
 
     // check loop.prio[1] values: {0,0,0,1}

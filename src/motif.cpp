@@ -29,114 +29,8 @@
 namespace mars
 {
 
-StemElement & StemloopMotif::new_stem()
-{
-    elements.emplace_back<StemElement>({});
-    return std::get<StemElement>(elements.back());
-}
-
-LoopElement & StemloopMotif::new_loop(bool is_5prime)
-{
-    elements.emplace_back<LoopElement>({});
-    auto & elem = std::get<LoopElement>(elements.back());
-    elem.is_5prime = is_5prime;
-    return elem;
-}
-
-std::vector<StemloopMotif> detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
-{
-    struct PkInfo
-    {
-        int level;
-        bool closing;
-        Coordinate previous;
-    };
-    std::vector<PkInfo> pk_infos{};
-    std::vector<StemloopMotif> stemloops;
-    unsigned char id_cnt{0u};
-
-    auto contains_loop = [&stemloops] (Coordinate const & outer)
-    {
-        return std::any_of(stemloops.crbegin(), stemloops.crend(), [&outer] (StemloopMotif const & inner)
-        {
-            return outer.first < inner.bounds.first && inner.bounds.second < outer.second;
-        });
-    };
-
-    // 0-based indices
-    for (auto &&[idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
-    {
-        if (pk == -1) // skip unpaired
-            continue;
-
-        while (pk + 1 > static_cast<int>(pk_infos.size())) // allocate a new pseudoknot layer
-            pk_infos.push_back({0, false, {0, 0}});
-
-        PkInfo & status = pk_infos[pk];
-        if (bp < idx) // close an interaction
-        {
-            status.previous = {bp, idx};
-            status.closing = true;
-            if (--status.level == 0 && !contains_loop(status.previous))
-                stemloops.emplace_back(id_cnt++, status.previous);
-        }
-        else if (status.closing) // open an interaction (after closing the previous)
-        {
-            if (status.level > 0 && !contains_loop(status.previous))
-                stemloops.emplace_back(id_cnt++, status.previous);
-            status.level = 1;
-            status.closing = false;
-        }
-        else // open another interaction
-        {
-            ++status.level;
-        }
-    }
-    if (settings.exterior) // add long external and multiloops
-    {
-        MotifLen pos = 0;
-        size_t const len = stemloops.size();
-        for (size_t idx = 0; idx < len; ++idx) // no iterators, because we modify the vector
-        {
-            if (stemloops[idx].bounds.first > pos + 19u)
-                stemloops.emplace_back(id_cnt++, Coordinate{pos, stemloops[idx].bounds.first - 1u});
-            pos = stemloops[idx].bounds.second + 1;
-        }
-        if (bpseq.size() > pos + 19u || stemloops.empty())
-            stemloops.emplace_back(id_cnt, Coordinate{pos, bpseq.size() - 1u});
-    }
-    return stemloops;
-}
-
-std::vector<StemloopMotif> create_motifs()
-{
-    if (settings.alignment_file.empty())
-        return {};
-    else if (settings.alignment_file.extension().string().find("mmo") != std::string::npos)
-        return restore_motifs(settings.alignment_file);
-
-    // Read the alignment
-    Msa msa = read_msa(settings.alignment_file);
-
-    // Find the stem loops
-    std::vector<StemloopMotif> motifs = detect_stemloops(msa.structure.first, msa.structure.second);
-
-    // Create a structure motif for each stemloop
-    std::vector<std::future<void>> futures;
-    for (StemloopMotif & motif : motifs)
-        futures.push_back(pool->submit(&StemloopMotif::analyze, &motif, msa));
-
-    for (auto & future : futures)
-        future.wait();
-
-    logger(1, "Found " << motifs.size() << " stem loops <== " << settings.alignment_file << std::endl);
-    for (auto const & motif : motifs)
-        logger(2, motif << std::endl);
-    return motifs;
-}
-
 // private helper functions for analyze()
-void check_gaps(int & current_gap, std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, int col, bool is_gap)
+void check_gaps(int & current_gap, std::vector<std::unordered_map<Position, size_t>> & gaps, int col, bool is_gap)
 {
     if (is_gap && current_gap == -1) // gap start
     {
@@ -151,7 +45,7 @@ void check_gaps(int & current_gap, std::vector<std::unordered_map<MotifLen, SeqN
     }
 }
 
-void filter_gaps(std::vector<std::unordered_map<MotifLen, SeqNum>> & gaps, SeqNum depth)
+void filter_gaps(std::vector<std::unordered_map<Position, size_t>> & gaps, size_t depth)
 {
     for (auto & map : gaps)
     {
@@ -178,22 +72,22 @@ void filter_profile(auto & queue)
     queue.erase(queue.cbegin(), ptr); // erase if ratio < p %
 }
 
-void StemloopMotif::analyze(Msa const & msa)
+void Stemloop::analyze(Msa const & msa)
 {
     depth = msa.sequences.size();
-    std::valarray<MotifLen> motif_len_stat(static_cast<MotifLen>(0), depth);
+    std::valarray<Position> sl_len_stat(static_cast<Position>(0), depth);
     std::vector<int> const & bpseq = msa.structure.first;
 
-    auto make_stem = [this, &msa, &bpseq, &motif_len_stat] (int & left, int & right)
+    auto make_stem = [this, &msa, &bpseq, &sl_len_stat] (int & left, int & right)
     {
-        StemElement & elem = new_stem();
+        StemElement & elem = std::get<StemElement>(elements.emplace_back<StemElement>({}));
         std::vector<int> gap_stat(depth, -1);
-        std::valarray<MotifLen> len_stat(static_cast<MotifLen>(0), depth);
+        std::valarray<Position> len_stat(static_cast<Position>(0), depth);
         do
         {
             assert(bpseq[right] == left);
             elem.gaps.emplace_back();
-            profile_char<GappedRnaPair> prof{};
+            profile_char<bi_alphabet<seqan3::gapped<seqan3::rna4>>> prof{};
             for (auto &&[current_gap, len, seq] : seqan3::views::zip(gap_stat, len_stat, msa.sequences))
             {
                 bool is_gap = seq[left] == seqan3::gap() && seq[right] == seqan3::gap();
@@ -215,16 +109,17 @@ void StemloopMotif::analyze(Msa const & msa)
             check_gaps(current_gap, elem.gaps, elem.prio.size(), false);
 
         filter_gaps(elem.gaps, depth);
-        motif_len_stat += len_stat;
+        sl_len_stat += len_stat;
         std::reverse(elem.gaps.begin(), elem.gaps.end());
         std::reverse(elem.prio.begin(), elem.prio.end());
     };
 
-    auto make_loop = [this, &msa, &bpseq, &motif_len_stat] (int & bpidx, bool is_5prime)
+    auto make_loop = [this, &msa, &bpseq, &sl_len_stat] (int & bpidx, bool leftsided)
     {
-        LoopElement & elem = new_loop(is_5prime);
+        LoopElement & elem = std::get<LoopElement>(elements.emplace_back<LoopElement>({}));
+        elem.leftsided = leftsided;
         std::vector<int> gap_stat(depth, -1);
-        std::valarray<MotifLen> len_stat(static_cast<MotifLen>(0), depth);
+        std::valarray<Position> len_stat(static_cast<Position>(0), depth);
         do
         {
             elem.gaps.emplace_back();
@@ -238,7 +133,7 @@ void StemloopMotif::analyze(Msa const & msa)
             }
             elem.prio.push_back(priority(prof, depth));
             filter_profile(elem.prio.back());
-            bpidx += (elem.is_5prime ? 1 : -1);
+            bpidx += (elem.leftsided ? 1 : -1);
         }
         while ((bpseq[bpidx] < bounds.first || bpseq[bpidx] > bounds.second) &&
                bpidx >= bounds.first && bpidx <= bounds.second);
@@ -247,7 +142,7 @@ void StemloopMotif::analyze(Msa const & msa)
             check_gaps(current_gap, elem.gaps, elem.prio.size(), false);
 
         filter_gaps(elem.gaps, depth);
-        motif_len_stat += len_stat;
+        sl_len_stat += len_stat;
         std::reverse(elem.gaps.begin(), elem.gaps.end());
         std::reverse(elem.prio.begin(), elem.prio.end());
     };
@@ -268,11 +163,11 @@ void StemloopMotif::analyze(Msa const & msa)
             throw std::runtime_error("The structure is inconsistent."); // prevent endless loop
         }
     }
-    length = {motif_len_stat.min(), motif_len_stat.max(), motif_len_stat.sum() / static_cast<float>(depth)};
+    length = {sl_len_stat.min(), sl_len_stat.max()};
     std::reverse(elements.begin(), elements.end());
 }
 
-void StemloopMotif::print_rssp(std::ofstream & os) const
+void Stemloop::print_rssp(std::ofstream & os) const
 {
     os << ">RSSP" << +uid << "|startpos=" << bounds.first << "|weight=1\n";
     std::deque<char> sequence{};
@@ -286,7 +181,7 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
             {
                 auto push = [&sequence, &structure, &element] (char c)
                 {
-                    if (element.is_5prime)
+                    if (element.leftsided)
                     {
                         sequence.push_front(c);
                         structure.push_front('.');
@@ -337,17 +232,16 @@ void StemloopMotif::print_rssp(std::ofstream & os) const
     os << '\n';
 }
 
-std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
+std::ostream & operator<<(std::ostream & os, Stemloop const & stemloop)
 {
-    os << "[" << (+motif.uid + 1) << "] MOTIF pos = (" << motif.bounds.first << ".."
-       << motif.bounds.second << "), len = (" << motif.length.min << ".." << motif.length.max << "), avg= "
-       << std::fixed << std::setprecision(1) << motif.length.mean << "\n";
-    for (auto const & elem : motif.elements)
+    os << "[" << (+stemloop.uid + 1) << "] STEMLOOP pos = (" << stemloop.bounds.first << ".."
+       << stemloop.bounds.second << "), len = (" << stemloop.length.first << ".." << stemloop.length.second << ")\n";
+    for (auto const & elem : stemloop.elements)
     {
         std::visit([&os] (auto element)
         {
             if constexpr (std::is_same_v<decltype(element), LoopElement>)
-                os << "\tLoop " << (element.is_5prime ? "5' " : "3' ");
+                os << "\tLoop " << (element.leftsided ? "5' " : "3' ");
             else
                 os << "\tStem    ";
 
@@ -387,25 +281,119 @@ std::ostream & operator<<(std::ostream & os, StemloopMotif const & motif)
     return os;
 }
 
-void store_rssp(std::vector<StemloopMotif> const & motifs)
+void store_rssp(Motif const & motif)
 {
-    if (settings.structator_file.empty() || motifs.empty())
+    if (settings.structator_file.empty() || motif.empty())
         return;
 
     std::ofstream ofs(settings.structator_file);
     if (ofs)
     {
-        for (auto const & motif : motifs)
-            motif.print_rssp(ofs);
-        logger(1, "Stored " << motifs.size() << " motifs ==> " << settings.structator_file << std::endl);
+        for (auto const & stemloop : motif)
+            stemloop.print_rssp(ofs);
+        logger(1, "Stored " << motif.size() << " stemloops ==> " << settings.structator_file << std::endl);
     }
     ofs.close();
 }
 
-#if SEQAN3_WITH_CEREAL
-std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_file)
+Motif create_motif()
 {
-    std::vector<StemloopMotif> motifs{};
+    if (settings.alignment_file.empty())
+        return {};
+#if SEQAN3_WITH_CEREAL
+    else if (settings.alignment_file.extension().string().find("mmo") != std::string::npos)
+        return restore_motif(settings.alignment_file);
+#endif
+
+    // Read the alignment
+    Msa msa = read_msa(settings.alignment_file);
+
+    // Find the stem loops
+    Motif motif = detect_stemloops(msa.structure.first, msa.structure.second);
+
+    // Analyze each stemloop
+    std::vector<std::future<void>> futures;
+    for (Stemloop & stemloop : motif)
+        futures.push_back(pool->submit(&Stemloop::analyze, &stemloop, msa));
+
+    for (auto & future : futures)
+        future.wait();
+
+    logger(1, "Found " << motif.size() << " stemloops <== " << settings.alignment_file << std::endl);
+    for (auto const & stemloop : motif)
+    logger(2, stemloop << std::endl);
+    return motif;
+}
+
+Motif detect_stemloops(std::vector<int> const & bpseq, std::vector<int> const & plevel)
+{
+    struct PkInfo
+    {
+        int level;
+        bool closing;
+        Bounds previous;
+    };
+    std::vector<PkInfo> pk_infos{};
+    Motif stemloops;
+    unsigned char id_cnt{0u};
+
+    auto contains_loop = [&stemloops] (Bounds const & outer)
+    {
+        return std::any_of(stemloops.crbegin(), stemloops.crend(), [&outer] (Stemloop const & inner)
+        {
+            return outer.first < inner.bounds.first && inner.bounds.second < outer.second;
+        });
+    };
+
+    // 0-based indices
+    for (auto &&[idx, bp, pk] : seqan3::views::zip(std::ranges::views::iota(0), bpseq, plevel))
+    {
+        if (pk == -1) // skip unpaired
+            continue;
+
+        while (pk + 1 > static_cast<int>(pk_infos.size())) // allocate a new pseudoknot layer
+            pk_infos.push_back({0, false, {0, 0}});
+
+        PkInfo & status = pk_infos[pk];
+        if (bp < idx) // close an interaction
+        {
+            status.previous = {bp, idx};
+            status.closing = true;
+            if (--status.level == 0 && !contains_loop(status.previous))
+                stemloops.emplace_back(id_cnt++, status.previous);
+        }
+        else if (status.closing) // open an interaction (after closing the previous)
+        {
+            if (status.level > 0 && !contains_loop(status.previous))
+                stemloops.emplace_back(id_cnt++, status.previous);
+            status.level = 1;
+            status.closing = false;
+        }
+        else // open another interaction
+        {
+            ++status.level;
+        }
+    }
+    if (!settings.limit) // add long external and multiloops
+    {
+        Position pos = 0;
+        size_t const len = stemloops.size();
+        for (size_t idx = 0; idx < len; ++idx) // no iterators, because we modify the vector
+        {
+            if (stemloops[idx].bounds.first > pos + 19u)
+                stemloops.emplace_back(id_cnt++, Bounds{pos, stemloops[idx].bounds.first - 1u});
+            pos = stemloops[idx].bounds.second + 1;
+        }
+        if (bpseq.size() > pos + 19u || stemloops.empty())
+            stemloops.emplace_back(id_cnt, Bounds{pos, bpseq.size() - 1u});
+    }
+    return stemloops;
+}
+
+#if SEQAN3_WITH_CEREAL
+Motif restore_motif(std::filesystem::path const & motif_file)
+{
+    Motif motif{};
     std::ifstream ifs{motif_file, std::ios::binary};
     if (ifs.good())
     {
@@ -414,27 +402,27 @@ std::vector<StemloopMotif> restore_motifs(std::filesystem::path const & motif_fi
         iarchive(version);
         if (version[0] == '1')
         {
-            iarchive(motifs);
-            logger(1, "Restored " << motifs.size() << " motifs <== " << motif_file << std::endl);
+            iarchive(motif);
+            logger(1, "Restored " << motif.size() << " stemloops <== " << motif_file << std::endl);
         }
     }
     ifs.close();
-    return motifs;
+    return motif;
 }
 
-void store_motifs(std::vector<StemloopMotif> const & motifs)
+void store_motif(Motif const & motif)
 {
-    if (settings.motif_file.empty() || motifs.empty())
+    if (settings.motif_file.empty() || motif.empty())
         return;
     std::ofstream ofs{settings.motif_file, std::ios::binary};
     if (ofs)
     {
         // Write the index to disk, including a version string.
         cereal::BinaryOutputArchive oarchive{ofs};
-        std::string const version{"1 mars vector<StemloopMotif>\n"};
+        std::string const version{"1 mars vector<Stemloop>\n"};
         oarchive(version);
-        oarchive(motifs);
-        logger(1, "Stored " << motifs.size() << " motifs ==> " << settings.motif_file << std::endl);
+        oarchive(motif);
+        logger(1, "Stored " << motif.size() << " stemloops ==> " << settings.motif_file << std::endl);
     }
     ofs.close();
 }
