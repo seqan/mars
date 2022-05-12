@@ -48,10 +48,11 @@ void compute_structure(Msa & msa)
 
     // Convert sequences
     std::list<std::string> seqs{msa.sequences.size()};
-    for (auto && [src, trg] : seqan3::views::zip(msa.sequences | seqan3::views::to_char, seqs))
+    auto && char_seq = msa.sequences | seqan3::views::to_char;
+    for (auto && [src, trg] : seqan3::views::zip(char_seq, seqs))
         std::ranges::copy(src, std::cpp20::back_inserter(trg));
 
-    msa.structure = std::move(run_ipknot(names, seqs));
+    msa.structure = run_ipknot(names, seqs);
 }
 
 } // namespace mars
