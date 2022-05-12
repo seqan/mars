@@ -6,54 +6,38 @@
 // ------------------------------------------------------------------------------------------------------------
 
 #include <iomanip>
+#include <fstream>
 
 #include "location.hpp"
+#include "settings.hpp"
 
 namespace mars
 {
 
-bool operator<(MotifLocation const & loc1, MotifLocation const & loc2)
+bool operator<(MotifLocation const & lhs, MotifLocation const & rhs)
 {
-    if (std::isnan(settings.min_score_per_motif) && loc1.evalue != loc2.evalue)
-        return loc1.evalue < loc2.evalue;
-    if (loc1.score != loc2.score)
-        return loc1.score > loc2.score;
-    if (loc1.num_stemloops != loc2.num_stemloops)
-        return loc1.num_stemloops > loc2.num_stemloops;
-    if (loc1.query_length != loc2.query_length)
-        return loc1.query_length > loc2.query_length;
-    if (loc1.sequence != loc2.sequence)
-        return loc1.sequence < loc2.sequence;
-    if (loc1.position_start != loc2.position_start)
-        return loc1.position_start < loc2.position_start;
-    return loc1.position_end < loc2.position_end;
+    if (std::isnan(settings.min_score_per_motif) && lhs.evalue != rhs.evalue)
+        return lhs.evalue < rhs.evalue;
+    if (lhs.score != rhs.score)
+        return lhs.score > rhs.score;
+    if (lhs.num_stemloops != rhs.num_stemloops)
+        return lhs.num_stemloops > rhs.num_stemloops;
+    if (lhs.query_length != rhs.query_length)
+        return lhs.query_length > rhs.query_length;
+    if (lhs.sequence != rhs.sequence)
+        return lhs.sequence < rhs.sequence;
+    if (lhs.position_start != rhs.position_start)
+        return lhs.position_start < rhs.position_start;
+    return lhs.position_end < rhs.position_end;
 }
 
-void LocationCollector::push(MotifLocation && loc)
+void MotifLocationStore::push(MotifLocation && loc)
 {
     std::lock_guard<std::mutex> guard(mutex_locations);
     emplace_back(loc);
 }
 
-void LocationCollector::print()
-{
-    std::sort(begin(), end());
-    if (!settings.result_file.empty())
-    {
-        logger(1, "Writing " << size() << " results ==> " << settings.result_file << std::endl);
-        std::ofstream file_stream(mars::settings.result_file);
-        print_results(file_stream);
-        file_stream.close();
-    }
-    else
-    {
-        logger(1, "Writing " << size() << " results ==> stdout" << std::endl);
-        std::lock_guard<std::mutex> guard(mutex_console);
-        print_results(std::cout);
-    }
-}
-
-void LocationCollector::print_results(std::ostream & out)
+void MotifLocationStore::print(std::ostream & out)
 {
     out << std::left << std::setw(35) << "sequence name"
         << "\t" << "index"
@@ -73,7 +57,7 @@ void LocationCollector::print_results(std::ostream & out)
     double const thr = std::max(std::sqrt(iter->evalue) * 10, 1e-10);
     do
     {
-        out << std::left << std::setw(35) << index.seq_name(iter->sequence)
+        out << std::left << std::setw(35) << names[iter->sequence]
             << "\t" << iter->sequence
             << "\t" << iter->position_start
             << "\t" << iter->position_end
@@ -86,23 +70,36 @@ void LocationCollector::print_results(std::ostream & out)
     while (++iter != cend() && (!std::isnan(settings.min_score_per_motif) || iter->evalue < thr));
 }
 
-bool operator<(Hit const & hit1, Hit const & hit2)
+void MotifLocationStore::print()
 {
-    return hit1.pos < hit2.pos;
+    std::sort(begin(), end());
+    if (!settings.result_file.empty())
+    {
+        logger(1, "Writing the best of " << size() << " results ==> " << settings.result_file << std::endl);
+        std::ofstream file_stream(mars::settings.result_file);
+        print(file_stream);
+        file_stream.close();
+    }
+    else
+    {
+        logger(1, "Writing the best of " << size() << " results ==> stdout" << std::endl);
+        std::lock_guard<std::mutex> guard(mutex_console);
+        print(std::cout);
+    }
 }
 
-HitStore::HitStore(size_t seq_count)
+bool operator<(StemloopHit const & lhs, StemloopHit const & rhs)
 {
-    hits.resize(seq_count);
+    return lhs.pos < rhs.pos;
 }
 
-void HitStore::push(Hit && hit, size_t seq)
+void StemloopHitStore::push(StemloopHit && hit, size_t seq)
 {
     std::lock_guard<std::mutex> guard(mutexes[seq % 256]); // distribute the mutexes
     hits[seq].emplace_back(hit);
 }
 
-std::vector<Hit> & HitStore::get(size_t seq)
+std::vector<StemloopHit> & StemloopHitStore::get(size_t seq)
 {
     return hits[seq];
 }

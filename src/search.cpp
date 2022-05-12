@@ -52,7 +52,7 @@ void SearchInfo::backtrack()
 
 bool SearchInfo::xdrop() const
 {
-    if (history.back().second.query_length() > motif.length.max)
+    if (history.back().second.query_length() > stemloop.length.max)
         return true;
     if (history.size() < settings.xdrop)
         return false;
@@ -65,10 +65,11 @@ void SearchInfo::compute_hits() const
     auto score = history.back().first;
     auto cur = history.back().second;
     auto const len = static_cast<long long>(cur.query_length());
-    if (len >= motif.length.min && len > 5 && score > 0)
+    if (len >= stemloop.length.min && len > 5 && score > 0)
     {
-        std::lock_guard<std::mutex> guard(mutex_queries);
-        queries.push_back(pool->submit([cur, store = &hits, off = motif.bounds.first, len, uid = motif.uid, score]
+        std::lock_guard<std::mutex> guard(queries.mutex);
+        queries.futures.push_back(pool->submit([cur, store = &hits, off = stemloop.bounds.first, len,
+                                                uid = stemloop.uid, score]
         {
             for (auto && [seq, pos] : cur.locate())
                 store->push({static_cast<long long>(pos) - off, len, uid, score}, seq);
@@ -77,7 +78,7 @@ void SearchInfo::compute_hits() const
 }
 
 template <typename MotifElement>
-void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
+void recurse_search(SearchInfo & info, ElementIter elem_it, MotifLen idx)
 {
     if (info.xdrop())
         return;
@@ -87,7 +88,7 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
     if (idx == elem.prio.size())
     {
         auto const next = elem_it + 1;
-        if (next == info.motif_end())
+        if (next == info.stemloop_end())
             info.compute_hits();
         else if (std::holds_alternative<StemElement>(*next))
             recurse_search<StemElement>(info, next, 0);
@@ -119,25 +120,24 @@ void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx)
         recurse_search<MotifElement>(info, elem_it, idx + len_num.first);
 }
 
-void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motifs)
+void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motif)
 {
-    HitStore hits(index.seq_count());
+    StemloopHitStore hits(index.get_names().size());
 
     logger(1, "Stem loop search...");
-    assert(motifs.size() <= UINT8_MAX);
-    uint8_t const num_motifs = motifs.size();
+    assert(motif.size() <= UINT8_MAX);
+    uint8_t const num_motifs = motif.size();
 
-    std::vector<std::future<void>> queries;
+    ConcurrentFutureVector queries;
     std::vector<std::future<void>> search_tasks;
-    std::mutex mutex_queries;
     seqan3::detail::latch lat{num_motifs};
     for (size_t idx = 0; idx < num_motifs; ++idx)
     {
-        search_tasks.push_back(pool->submit([&index, &motifs, &hits, &queries, &mutex_queries, &lat, idx]
+        search_tasks.push_back(pool->submit([&index, &motif, &hits, &queries, &lat, idx]
         {
             // initiate recursive search
-            SearchInfo info(index.raw(), motifs[idx], hits, queries, mutex_queries);
-            auto const iter = motifs[idx].elements.cbegin();
+            SearchInfo info(index.raw(), motif[idx], hits, queries);
+            auto const iter = motif[idx].elements.cbegin();
             lat.wait();
             if (std::holds_alternative<LoopElement>(*iter))
                 recurse_search<LoopElement>(info, iter, 0);
@@ -149,39 +149,41 @@ void find_motifs(mars::BiDirectionalIndex const & index, std::vector<StemloopMot
     }
     for (auto & future : search_tasks)
         future.wait();
-    logger(1, "\nWaiting for " << queries.size() << " queries to complete...");
+    logger(1, "\nWaiting for " << queries.futures.size() << " queries to complete...");
     std::chrono::steady_clock::time_point tm0 = std::chrono::steady_clock::now();
-    for (auto & future : queries)
+    for (auto & future : queries.futures)
         future.wait();
+    queries.futures.clear();
     auto const sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - tm0).count();
     logger(1, " finished (" << sec << "s)." << std::endl);
 
     // collect the hits asynchronously and print
-    LocationCollector locations(index);
-    size_t const db_len = index.raw().size() - (index.seq_count() > 1 ? index.seq_count() : 2);
-    queries.clear();
-    size_t const delta = (index.seq_count() - 1) / settings.nthreads + 1; // ceil
-    for (size_t sidx = 0u; sidx < index.seq_count(); sidx += delta)
+    MotifLocationStore locations(index.get_names());
+    size_t const seqnum = index.get_names().size();
+    size_t const db_len = index.raw().size() - (seqnum > 1 ? seqnum : 2);
+    size_t const delta = (seqnum - 1) / settings.nthreads + 1; // ceil
+    std::vector<std::future<void>> futures;
+    for (size_t sidx = 0; sidx < seqnum; sidx += delta)
     {
-        queries.push_back(pool->submit(merge_hits, std::ref(locations), std::ref(hits), std::ref(motifs),
-                                       db_len, sidx, std::min(sidx + delta, index.seq_count())));
+        futures.push_back(pool->submit(merge_hits, std::ref(locations), std::ref(hits), std::ref(motif),
+                                       db_len, sidx, std::min(sidx + delta, seqnum)));
     }
-    for (auto & future : queries)
+    for (auto & future : futures)
         future.wait();
 
     locations.print();
 }
 
-void merge_hits(LocationCollector & locations,
-                HitStore & hits,
-                std::vector<StemloopMotif> const & motifs,
+void merge_hits(MotifLocationStore & locations,
+                StemloopHitStore & hits,
+                std::vector<StemloopMotif> const & motif,
                 size_t db_len,
                 size_t sidx_begin,
                 size_t sidx_end)
 {
     for (size_t sidx = sidx_begin; sidx < sidx_end; ++sidx)
     {
-        std::vector<Hit> & hitvec = hits.get(sidx);
+        std::vector<StemloopHit> & hitvec = hits.get(sidx);
         if (hitvec.empty())
             continue;
 
@@ -192,9 +194,9 @@ void merge_hits(LocationCollector & locations,
 
         do
         {
-            std::vector<std::vector<Hit>::const_iterator> best_hits(motifs.size(), stop);
+            std::vector<std::vector<StemloopHit>::const_iterator> best_hits(motif.size(), stop);
             // we allow a position divergence of half alignment length
-            while (right_end != stop && right_end->pos <= left_end->pos + motifs.back().bounds.second / 2)
+            while (right_end != stop && right_end->pos <= left_end->pos + motif.back().bounds.second / 2)
             {
                 auto & iter = best_hits[right_end->midx];
                 if (iter == stop || iter->score < right_end->score)
@@ -206,14 +208,14 @@ void merge_hits(LocationCollector & locations,
             size_t pos_max{0};
             size_t query_len{0};
             float bit_score{0};
-            uint8_t diversity{0}; // number of different motifs found
+            uint8_t diversity{0}; // number of different stemloops found
 
             for (auto & hit : best_hits)
             {
                 if (hit != stop)
                 {
-                    pos_min = std::min(static_cast<size_t>(hit->pos + motifs[hit->midx].bounds.first), pos_min);
-                    pos_max = std::max(static_cast<size_t>(hit->pos + hit->length + motifs[hit->midx].bounds.first),
+                    pos_min = std::min(static_cast<size_t>(hit->pos + motif[hit->midx].bounds.first), pos_min);
+                    pos_max = std::max(static_cast<size_t>(hit->pos + hit->length + motif[hit->midx].bounds.first),
                                        pos_max);
                     bit_score += hit->score;
                     query_len += hit->length;
@@ -222,8 +224,8 @@ void merge_hits(LocationCollector & locations,
             }
 
             if (std::isnan(settings.min_score_per_motif) || // evalue filter
-                (diversity > motifs.size() / 4 &&
-                 bit_score > static_cast<float>(motifs.size()) * settings.min_score_per_motif))
+                (diversity > motif.size() / 4 &&
+                 bit_score > static_cast<float>(motif.size()) * settings.min_score_per_motif))
             {
                 double const evalue = static_cast<double>(db_len * query_len) / exp2(bit_score);
                 locations.push({evalue, bit_score, diversity, pos_min, pos_max, query_len, sidx});

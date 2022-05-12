@@ -10,6 +10,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <future>
 #include <set>
 #include <tuple>
 #include <variant>
@@ -25,41 +26,47 @@
 namespace mars
 {
 
-using ElementIter = typename std::vector<std::variant<LoopElement, StemElement>>::const_iterator;
+//! \brief The type of a stemloop's element iterator.
+typedef typename std::vector<std::variant<LoopElement, StemElement>>::const_iterator ElementIter;
 
-void find_motifs(BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motifs);
+//! \brief A storage for futures with concurrent access.
+struct ConcurrentFutureVector
+{
+    std::vector<std::future<void>> futures; //!< The future storage.
+    std::mutex mutex; //!< A mutex for concurrent access to `futures`.
+};
 
-void merge_hits(LocationCollector & locations,
-                HitStore & hits,
-                std::vector<StemloopMotif> const & motifs,
-                size_t db_len,
-                size_t sidx_begin,
-                size_t sidx_end);
-
-typedef std::pair<float, seqan3::bi_fm_index_cursor<Index>> ScoredCursor;
-
-//! \brief Provides a bi-directional search step-by-step with backtracking.
-struct SearchInfo
+//! \brief Provides a bi-directional step-by-step stemloop search with backtracking.
+class SearchInfo
 {
 private:
-    StemloopMotif const & motif;
-    HitStore & hits;
-    std::vector<std::future<void>> & queries;
-    std::mutex & mutex_queries;
-
     //! \brief The history of scores and cursors (needed for backtracking)
-    std::vector<ScoredCursor> history;
+    std::vector<std::pair<float, seqan3::bi_fm_index_cursor<Index>>> history;
+
+    //! \brief The stemloop to be searched.
+    StemloopMotif const & stemloop;
+
+    //! \brief The resulting stemloop hits are stored here concurrently.
+    StemloopHitStore & hits;
+
+    //! \brief Storage for the task futures of locating the hits.
+    ConcurrentFutureVector & queries;
 
 public:
     /*!
      * \brief Constructor for a bi-directional search.
+     * \param index The index where the search takes place.
+     * \param stemloop The stemloop to be searched.
+     * \param hits Storage for the resulting stemloop hits.
+     * \param queries Storage for the task futures of locating the hits.
      */
-    SearchInfo(Index const & index, StemloopMotif const & stemloop, HitStore & hits,
-               std::vector<std::future<void>> & queries, std::mutex & mutex_queries):
-        motif{stemloop},
+    SearchInfo(Index const & index,
+               StemloopMotif const & stemloop,
+               StemloopHitStore & hits,
+               ConcurrentFutureVector & queries):
+        stemloop{stemloop},
         hits{hits},
-        queries{queries},
-        mutex_queries{mutex_queries}
+        queries{queries}
     {
         history.emplace_back(0, index);
     }
@@ -88,18 +95,50 @@ public:
      */
     [[nodiscard]] bool xdrop() const;
 
-    ElementIter motif_end() const
+    /*!
+     * \brief Determine whether we have reached the last element of the stemloop.
+     * \return the end iterator for the stemloop's elements.
+     */
+    ElementIter stemloop_end() const
     {
-        return motif.elements.cend();
+        return stemloop.elements.cend();
     }
 
-    /*!
-     * \brief Perform the search with the current query and store the result in `hits`.
-     */
+    //! \brief Locate the current query in the genome and store the result in `hits`.
     void compute_hits() const;
 };
 
+/*!
+ * \brief Recursive function that descends in the search tree.
+ * \tparam MotifElement Type that determines whether we search a loop or stem.
+ * \param info A reference to the search information.
+ * \param elem_it The current stemloop element where to start the search.
+ * \param idx The position in the stemloop element where to start the search.
+ */
 template <typename MotifElement>
-void recurse_search(SearchInfo & info, ElementIter const elem_it, MotifLen idx);
+void recurse_search(SearchInfo & info, ElementIter elem_it, MotifLen idx);
+
+/*!
+ * \brief Combine hits into motif locations separately for each sequence in range.
+ * \param locations The resulting locations.
+ * \param hits The hits for each sequence.
+ * \param motif The motif, i.e. the vector of stemloops that was subject to the search.
+ * \param db_len The total length of all sequences.
+ * \param sidx_begin The first sequence in range.
+ * \param sidx_end One after the last sequence in range.
+ */
+void merge_hits(MotifLocationStore & locations,
+                StemloopHitStore & hits,
+                std::vector<StemloopMotif> const & motif,
+                size_t db_len,
+                size_t sidx_begin,
+                size_t sidx_end);
+
+/*!
+ * \brief Initiate the recursive search.
+ * \param index The index to be searched in.
+ * \param motif The motif to be searched.
+ */
+void find_motifs(BiDirectionalIndex const & index, std::vector<StemloopMotif> const & motif);
 
 } // namespace mars

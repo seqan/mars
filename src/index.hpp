@@ -65,24 +65,18 @@ public:
     void create();
 
     /*!
-     * \brief Query the number of sequences that have been stored in the index.
-     * \return the number of sequences.
+     * \brief Access the sequence names.
+     * \return the name vector of the sequences.
      */
-    size_t seq_count() const
+    std::vector<std::string> const & get_names() const
     {
-        return names.size();
+        return names;
     }
 
     /*!
-     * \brief Access a sequence name.
-     * \param idx The position of the sequence.
-     * \return the name of the `idx`th sequence.
+     * \brief Access the underlying bi-FM index.
+     * \return the raw index (without metadata).
      */
-    std::string const & seq_name(size_t idx) const
-    {
-        return names[idx];
-    }
-
     Index const & raw() const
     {
         return index;
