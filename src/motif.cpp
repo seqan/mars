@@ -74,11 +74,11 @@ void filter_profile(auto & queue)
 
 void Stemloop::analyze(Msa const & msa)
 {
-    depth = msa.sequences.size();
+    size_t const depth = msa.sequences.size();
     std::valarray<Position> sl_len_stat(static_cast<Position>(0), depth);
     std::vector<int> const & bpseq = msa.structure.first;
 
-    auto make_stem = [this, &msa, &bpseq, &sl_len_stat] (int & left, int & right)
+    auto make_stem = [this, &msa, &bpseq, &sl_len_stat, depth] (int & left, int & right)
     {
         StemElement & elem = std::get<StemElement>(elements.emplace_back<StemElement>({}));
         std::vector<int> gap_stat(depth, -1);
@@ -114,7 +114,7 @@ void Stemloop::analyze(Msa const & msa)
         std::reverse(elem.prio.begin(), elem.prio.end());
     };
 
-    auto make_loop = [this, &msa, &bpseq, &sl_len_stat] (int & bpidx, bool leftsided)
+    auto make_loop = [this, &msa, &bpseq, &sl_len_stat, depth] (int & bpidx, bool leftsided)
     {
         LoopElement & elem = std::get<LoopElement>(elements.emplace_back<LoopElement>({}));
         elem.leftsided = leftsided;
@@ -224,11 +224,11 @@ void Stemloop::print_rssp(std::ofstream & os) const
         }, elem);
     }
 
-    for (char const c : sequence)
-        os << c;
+    for (char const chr : sequence)
+        os << chr;
     os << '\n';
-    for (char const c : structure)
-        os << c;
+    for (char const chr : structure)
+        os << chr;
     os << '\n';
 }
 
@@ -301,7 +301,7 @@ Motif create_motif()
     if (settings.alignment_file.empty())
         return {};
 #if SEQAN3_WITH_CEREAL
-    else if (settings.alignment_file.extension().string().find("mmo") != std::string::npos)
+    if (settings.alignment_file.extension().string().find("mmo") != std::string::npos)
         return restore_motif(settings.alignment_file);
 #endif
 
@@ -321,7 +321,9 @@ Motif create_motif()
 
     logger(1, "Found " << motif.size() << " stemloops <== " << settings.alignment_file << std::endl);
     for (auto const & stemloop : motif)
-    logger(2, stemloop << std::endl);
+    {
+        logger(2, stemloop << std::endl);
+    }
     return motif;
 }
 

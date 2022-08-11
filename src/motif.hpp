@@ -110,9 +110,6 @@ struct Stemloop
     //! \brief The minimum and maximum length of the stemloop.
     Bounds length;
 
-    //! \brief The number of underlying sequences of which the stemloop was created.
-    size_t depth;
-
     //! \brief A vector of loop and stem elements that the stemloop consists of.
     std::vector<std::variant<LoopElement, StemElement>> elements;
 
@@ -125,13 +122,12 @@ struct Stemloop
         uid{id},
         bounds{std::move(pos)},
         length{},
-        depth{},
         elements{}
     {}
 
 #if SEQAN3_WITH_CEREAL
     //! \brief Default constructor for serialization.
-    Stemloop() : uid{}, bounds{}, length{}, depth{}, elements{}
+    Stemloop() : uid{}, bounds{}, length{}, elements{}
     {}
 
     /*!
@@ -145,7 +141,6 @@ struct Stemloop
         archive(uid);
         archive(bounds);
         archive(length);
-        archive(depth);
         archive(elements);
     }
 #endif
@@ -206,12 +201,8 @@ std::vector<std::pair<float, alph_type>> priority(profile_char<alph_type> pch, s
 {
     std::vector<std::pair<float, alph_type>> result{};
     for (auto && [qnt, chr, bg] : seqan3::views::zip(pch.quantities(), pch.alphabet, pch.background_distribution))
-    {
         if (qnt > 0)
-        {
             result.emplace_back(log2f((qnt + 1.) / pch.one / depth) - bg, chr);
-        }
-    }
     std::sort(result.begin(), result.end());
     return result;
 }
